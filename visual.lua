@@ -43,7 +43,7 @@ return function(Window)
     
     -- Обводка HUD
     local HudStroke = Instance.new("UIStroke")
-    HudStroke.Color = Color3.fromRGB(138, 43, 226) -- По умолчанию фиолетовый
+    HudStroke.Color = Color3.fromRGB(138, 43, 226)
     HudStroke.Thickness = 1.2
     HudStroke.Parent = HudFrame
     
@@ -102,14 +102,14 @@ return function(Window)
     ChinaHat.CanCollide = false
     ChinaHat.Material = Enum.Material.Neon
     ChinaHat.Transparency = 0.5
-    -- Размер уменьшен примерно в 3 раза
-    ChinaHat.Size = Vector3.new(1.16, 0.23, 1.16) 
+    -- Высота (Y) увеличена в 2 раза (с 0.23 до 0.46) для остроты
+    ChinaHat.Size = Vector3.new(1.16, 0.46, 1.16) 
     ChinaHat.Color = HatSettings.Color
     
     local HatMesh = Instance.new("SpecialMesh", ChinaHat)
     HatMesh.MeshType = Enum.MeshType.FileMesh
     HatMesh.MeshId = "rbxassetid://1033714"
-    HatMesh.Scale = Vector3.new(1.16, 0.23, 1.16)
+    HatMesh.Scale = Vector3.new(1.16, 0.46, 1.16)
     
     VisualTab:CreateToggle({
         Name = "China Hat (На себя)",
@@ -204,7 +204,6 @@ return function(Window)
     local frames = 0
     local fps = 0
     
-    -- Каждую секунду обновляем счетчик FPS
     task.spawn(function()
         while task.wait(1) do
             fps = frames
@@ -241,8 +240,8 @@ return function(Window)
             local Character = LocalPlayer.Character
             if Character and Character:FindFirstChild("Head") and Character:FindFirstChild("Humanoid") and Character.Humanoid.Health > 0 then
                 ChinaHat.Parent = workspace
-                -- Опустили пониже (0.55), так как шляпа стала в 3 раза тоньше
-                ChinaHat.CFrame = Character.Head.CFrame * CFrame.new(0, 0.55, 0)
+                -- 0.5 (высота половины головы персонажа) + 0.3 (нужное смещение выше головы) = 0.8
+                ChinaHat.CFrame = Character.Head.CFrame * CFrame.new(0, 0.8, 0)
             else
                 ChinaHat.Parent = nil
             end
