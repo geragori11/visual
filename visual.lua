@@ -25,13 +25,15 @@ return function(Window)
     Watermark.Name = "WatermarkText"
     Watermark.Parent = ScreenGui
     Watermark.BackgroundTransparency = 1
-    Watermark.Position = UDim2.new(0, 15, 0, 15)
+    -- Позиция посередине сверху
+    Watermark.AnchorPoint = Vector2.new(0.5, 0)
+    Watermark.Position = UDim2.new(0.5, 0, 0, 15)
     Watermark.Size = UDim2.new(0, 200, 0, 30)
     Watermark.Font = Enum.Font.GothamBold
     Watermark.Text = "XCLIENT"
     Watermark.TextColor3 = Color3.fromRGB(255, 255, 255)
     Watermark.TextSize = 24
-    Watermark.TextXAlignment = Enum.TextXAlignment.Left
+    Watermark.TextXAlignment = Enum.TextXAlignment.Center -- Центрирование текста
     Watermark.TextStrokeTransparency = 0.5
     Watermark.Visible = true 
     
@@ -49,7 +51,7 @@ return function(Window)
     -- ==========================================
     local HatSettings = {
         Enabled = false,
-        Color = Color3.fromRGB(255, 255, 255)
+        Color = Color3.fromRGB(60, 255, 150) -- Зеленоватый оттенок по умолчанию как на скрине
     }
     
     local ChinaHat = Instance.new("Part")
@@ -57,13 +59,14 @@ return function(Window)
     ChinaHat.Anchored = true
     ChinaHat.CanCollide = false
     ChinaHat.Material = Enum.Material.Neon
-    ChinaHat.Transparency = 0.4
-    ChinaHat.Size = Vector3.new(3, 1, 3)
+    ChinaHat.Transparency = 0.5 -- Сделано полупрозрачным для эффекта как в Minecraft
+    ChinaHat.Size = Vector3.new(3.5, 0.7, 3.5) -- Более широкая и плоская форма
+    ChinaHat.Color = HatSettings.Color
     
     local HatMesh = Instance.new("SpecialMesh", ChinaHat)
     HatMesh.MeshType = Enum.MeshType.FileMesh
-    HatMesh.MeshId = "rbxassetid://3270017" -- ID стандартного конуса
-    HatMesh.Scale = Vector3.new(3, 1, 3)
+    HatMesh.MeshId = "rbxassetid://1033714" -- ID правильного конуса
+    HatMesh.Scale = Vector3.new(3.5, 0.7, 3.5) -- Растягиваем в стороны и сплющиваем
     
     VisualTab:CreateToggle({
         Name = "China Hat (На себя)",
@@ -79,7 +82,7 @@ return function(Window)
     
     VisualTab:CreateColorPicker({
         Name = "Цвет China Hat",
-        Color = Color3.fromRGB(255, 255, 255),
+        Color = Color3.fromRGB(60, 255, 150),
         Flag = "ChinaHatColor",
         Callback = function(Value)
             HatSettings.Color = Value
@@ -173,8 +176,8 @@ return function(Window)
             local Character = LocalPlayer.Character
             if Character and Character:FindFirstChild("Head") and Character:FindFirstChild("Humanoid") and Character.Humanoid.Health > 0 then
                 ChinaHat.Parent = workspace
-                -- Крепим чуть выше головы
-                ChinaHat.CFrame = Character.Head.CFrame * CFrame.new(0, 1.1, 0)
+                -- Крепим ровно на макушку (0.8 стадов выше центра головы)
+                ChinaHat.CFrame = Character.Head.CFrame * CFrame.new(0, 0.8, 0)
             else
                 ChinaHat.Parent = nil
             end
