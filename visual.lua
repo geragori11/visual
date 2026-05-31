@@ -4,45 +4,87 @@ return function(Window)
     local CoreGui = game:GetService("CoreGui")
     local Players = game:GetService("Players")
     local RunService = game:GetService("RunService")
+    local Stats = game:GetService("Stats")
     local LocalPlayer = Players.LocalPlayer
     local Camera = workspace.CurrentCamera
     
-    -- Создание HUD
+    -- ==========================================
+    -- HUD (XCLIENT)
+    -- ==========================================
     local ScreenGui = Instance.new("ScreenGui")
     ScreenGui.Name = "XCLIENT_HUD"
     ScreenGui.IgnoreGuiInset = true
     ScreenGui.ResetOnSpawn = false
     
-    -- Защита GUI (CoreGui)
-    local success = pcall(function()
-        ScreenGui.Parent = CoreGui
-    end)
-    if not success then
-        ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
-    end
+    -- Защита GUI
+    local success = pcall(function() ScreenGui.Parent = CoreGui end)
+    if not success then ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui") end
     
-    local Watermark = Instance.new("TextLabel")
-    Watermark.Name = "WatermarkText"
-    Watermark.Parent = ScreenGui
-    Watermark.BackgroundTransparency = 1
-    -- Позиция посередине сверху
-    Watermark.AnchorPoint = Vector2.new(0.5, 0)
-    Watermark.Position = UDim2.new(0.5, 0, 0, 15)
-    Watermark.Size = UDim2.new(0, 200, 0, 30)
-    Watermark.Font = Enum.Font.GothamBold
-    Watermark.Text = "XCLIENT"
-    Watermark.TextColor3 = Color3.fromRGB(255, 255, 255)
-    Watermark.TextSize = 24
-    Watermark.TextXAlignment = Enum.TextXAlignment.Center -- Центрирование текста
-    Watermark.TextStrokeTransparency = 0.5
-    Watermark.Visible = true 
+    -- Главный фрейм подложки (авто-расширение под текст)
+    local HudFrame = Instance.new("Frame")
+    HudFrame.Name = "HudFrame"
+    HudFrame.Parent = ScreenGui
+    HudFrame.AnchorPoint = Vector2.new(0.5, 0)
+    HudFrame.Position = UDim2.new(0.5, 0, 0, 15)
+    HudFrame.Size = UDim2.new(0, 0, 0, 26)
+    HudFrame.AutomaticSize = Enum.AutomaticSize.X
+    HudFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+    HudFrame.BackgroundTransparency = 0.2
+    HudFrame.BorderSizePixel = 0
+    
+    local HudCorner = Instance.new("UICorner")
+    HudCorner.CornerRadius = UDim.new(0, 6)
+    HudCorner.Parent = HudFrame
+    
+    local HudPadding = Instance.new("UIPadding")
+    HudPadding.PaddingLeft = UDim.new(0, 12)
+    HudPadding.PaddingRight = UDim.new(0, 12)
+    HudPadding.Parent = HudFrame
+    
+    -- Обводка HUD
+    local HudStroke = Instance.new("UIStroke")
+    HudStroke.Color = Color3.fromRGB(138, 43, 226) -- По умолчанию фиолетовый
+    HudStroke.Thickness = 1.2
+    HudStroke.Parent = HudFrame
+    
+    -- Текст
+    local HudText = Instance.new("TextLabel")
+    HudText.Name = "HudText"
+    HudText.Parent = HudFrame
+    HudText.BackgroundTransparency = 1
+    HudText.Size = UDim2.new(0, 0, 1, 0)
+    HudText.AutomaticSize = Enum.AutomaticSize.X
+    HudText.Font = Enum.Font.GothamSemibold
+    HudText.Text = ""
+    HudText.TextColor3 = Color3.fromRGB(220, 220, 220)
+    HudText.TextSize = 13
+    HudText.RichText = true
+    
+    local HudSettings = {
+        Enabled = true,
+        RGB = true,
+        RGBSpeed = 3
+    }
     
     VisualTab:CreateToggle({
-        Name = "Отображать HUD (XCLIENT)",
+        Name = "Отображать HUD",
         CurrentValue = true,
         Flag = "VisualHUDToggle",
         Callback = function(Value)
-            Watermark.Visible = Value
+            HudFrame.Visible = Value
+            HudSettings.Enabled = Value
+        end
+    })
+    
+    VisualTab:CreateToggle({
+        Name = "Переливающийся HUD (RGB)",
+        CurrentValue = true,
+        Flag = "VisualHUDRGB",
+        Callback = function(Value)
+            HudSettings.RGB = Value
+            if not Value then
+                HudStroke.Color = Color3.fromRGB(138, 43, 226)
+            end
         end
     })
 
@@ -51,7 +93,7 @@ return function(Window)
     -- ==========================================
     local HatSettings = {
         Enabled = false,
-        Color = Color3.fromRGB(60, 255, 150) -- Зеленоватый оттенок по умолчанию как на скрине
+        Color = Color3.fromRGB(60, 255, 150)
     }
     
     local ChinaHat = Instance.new("Part")
@@ -59,14 +101,15 @@ return function(Window)
     ChinaHat.Anchored = true
     ChinaHat.CanCollide = false
     ChinaHat.Material = Enum.Material.Neon
-    ChinaHat.Transparency = 0.5 -- Сделано полупрозрачным для эффекта как в Minecraft
-    ChinaHat.Size = Vector3.new(3.5, 0.7, 3.5) -- Более широкая и плоская форма
+    ChinaHat.Transparency = 0.5
+    -- Размер уменьшен примерно в 3 раза
+    ChinaHat.Size = Vector3.new(1.16, 0.23, 1.16) 
     ChinaHat.Color = HatSettings.Color
     
     local HatMesh = Instance.new("SpecialMesh", ChinaHat)
     HatMesh.MeshType = Enum.MeshType.FileMesh
-    HatMesh.MeshId = "rbxassetid://1033714" -- ID правильного конуса
-    HatMesh.Scale = Vector3.new(3.5, 0.7, 3.5) -- Растягиваем в стороны и сплющиваем
+    HatMesh.MeshId = "rbxassetid://1033714"
+    HatMesh.Scale = Vector3.new(1.16, 0.23, 1.16)
     
     VisualTab:CreateToggle({
         Name = "China Hat (На себя)",
@@ -74,9 +117,7 @@ return function(Window)
         Flag = "ChinaHatToggle",
         Callback = function(Value)
             HatSettings.Enabled = Value
-            if not Value then
-                ChinaHat.Parent = nil
-            end
+            if not Value then ChinaHat.Parent = nil end
         end
     })
     
@@ -111,7 +152,6 @@ return function(Window)
         Line.Visible = false
         table.insert(Lines, Line)
     end
-    -- [1] = Верх, [2] = Низ, [3] = Лево, [4] = Право
 
     VisualTab:CreateToggle({
         Name = "Кастомный прицел",
@@ -119,9 +159,7 @@ return function(Window)
         Flag = "CrosshairToggle",
         Callback = function(Value)
             CrosshairSettings.Enabled = Value
-            for _, line in ipairs(Lines) do
-                line.Visible = Value
-            end
+            for _, line in ipairs(Lines) do line.Visible = Value end
         end
     })
     
@@ -129,9 +167,7 @@ return function(Window)
         Name = "Цвет прицела",
         Color = Color3.fromRGB(0, 255, 0),
         Flag = "CrosshairColor",
-        Callback = function(Value)
-            CrosshairSettings.Color = Value
-        end
+        Callback = function(Value) CrosshairSettings.Color = Value end
     })
 
     VisualTab:CreateSlider({
@@ -140,9 +176,7 @@ return function(Window)
         Increment = 1,
         CurrentValue = 10,
         Flag = "CrosshairSize",
-        Callback = function(Value)
-            CrosshairSettings.Size = Value
-        end
+        Callback = function(Value) CrosshairSettings.Size = Value end
     })
 
     VisualTab:CreateSlider({
@@ -151,9 +185,7 @@ return function(Window)
         Increment = 1,
         CurrentValue = 5,
         Flag = "CrosshairGap",
-        Callback = function(Value)
-            CrosshairSettings.Gap = Value
-        end
+        Callback = function(Value) CrosshairSettings.Gap = Value end
     })
 
     VisualTab:CreateSlider({
@@ -162,22 +194,55 @@ return function(Window)
         Increment = 1,
         CurrentValue = 2,
         Flag = "CrosshairThickness",
-        Callback = function(Value)
-            CrosshairSettings.Thickness = Value
-        end
+        Callback = function(Value) CrosshairSettings.Thickness = Value end
     })
 
     -- ==========================================
-    -- РЕНДЕР ЦИКЛ (Обновление позиций каждый кадр)
+    -- РЕНДЕР ЦИКЛ И ЛОГИКА
     -- ==========================================
-    RunService.RenderStepped:Connect(function()
+    local hue = 0
+    local frames = 0
+    local fps = 0
+    
+    -- Каждую секунду обновляем счетчик FPS
+    task.spawn(function()
+        while task.wait(1) do
+            fps = frames
+            frames = 0
+        end
+    end)
+
+    RunService.RenderStepped:Connect(function(deltaTime)
+        frames = frames + 1
+        
+        -- Обновление HUD
+        if HudSettings.Enabled then
+            local ping = 0
+            pcall(function()
+                ping = math.floor(Stats.Network.ServerStatsItem["Data Ping"]:GetValue())
+            end)
+            
+            if HudSettings.RGB then
+                hue = hue + (deltaTime * (HudSettings.RGBSpeed / 10))
+                if hue > 1 then hue = 0 end
+                
+                local rgbColor = Color3.fromHSV(hue, 1, 1)
+                HudStroke.Color = rgbColor
+                
+                local hexColor = string.format("#%02X%02X%02X", rgbColor.R * 255, rgbColor.G * 255, rgbColor.B * 255)
+                HudText.Text = string.format('<b><font color="%s">xclient</font></b> <font color="#A0A0A0">|</font> geragori <font color="#A0A0A0">|</font> %d fps <font color="#A0A0A0">|</font> %d ms', hexColor, fps, ping)
+            else
+                HudText.Text = string.format('<b><font color="#8A2BE2">xclient</font></b> <font color="#A0A0A0">|</font> geragori <font color="#A0A0A0">|</font> %d fps <font color="#A0A0A0">|</font> %d ms', fps, ping)
+            end
+        end
+
         -- Обновление China Hat
         if HatSettings.Enabled then
             local Character = LocalPlayer.Character
             if Character and Character:FindFirstChild("Head") and Character:FindFirstChild("Humanoid") and Character.Humanoid.Health > 0 then
                 ChinaHat.Parent = workspace
-                -- Крепим ровно на макушку (0.8 стадов выше центра головы)
-                ChinaHat.CFrame = Character.Head.CFrame * CFrame.new(0, 0.8, 0)
+                -- Опустили пониже (0.55), так как шляпа стала в 3 раза тоньше
+                ChinaHat.CFrame = Character.Head.CFrame * CFrame.new(0, 0.55, 0)
             else
                 ChinaHat.Parent = nil
             end
@@ -194,19 +259,15 @@ return function(Window)
             local thick = CrosshairSettings.Thickness
             local color = CrosshairSettings.Color
             
-            -- Верхняя линия
             Lines[1].Size = UDim2.new(0, thick, 0, size)
             Lines[1].Position = UDim2.new(0, CenterX - thick / 2, 0, CenterY - gap - size)
             
-            -- Нижняя линия
             Lines[2].Size = UDim2.new(0, thick, 0, size)
             Lines[2].Position = UDim2.new(0, CenterX - thick / 2, 0, CenterY + gap)
             
-            -- Левая линия
             Lines[3].Size = UDim2.new(0, size, 0, thick)
             Lines[3].Position = UDim2.new(0, CenterX - gap - size, 0, CenterY - thick / 2)
             
-            -- Правая линия
             Lines[4].Size = UDim2.new(0, size, 0, thick)
             Lines[4].Position = UDim2.new(0, CenterX + gap, 0, CenterY - thick / 2)
             
