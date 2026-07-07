@@ -5,6 +5,7 @@ return function(Window)
     local Players = game:GetService("Players")
     local RunService = game:GetService("RunService")
     local Stats = game:GetService("Stats")
+    local Lighting = game:GetService("Lighting")
     local LocalPlayer = Players.LocalPlayer
     local Camera = workspace.CurrentCamera
     
@@ -102,7 +103,6 @@ return function(Window)
     ChinaHat.CanCollide = false
     ChinaHat.Material = Enum.Material.Neon
     ChinaHat.Transparency = 0.5
-    -- Высота (Y) увеличена в 2 раза (с 0.23 до 0.46) для остроты
     ChinaHat.Size = Vector3.new(1.16, 0.46, 1.16) 
     ChinaHat.Color = HatSettings.Color
     
@@ -198,6 +198,72 @@ return function(Window)
     })
 
     -- ==========================================
+    -- НАСТРОЙКА FOV (Угол обзора)
+    -- ==========================================
+    local FOVSettings = {
+        Enabled = false,
+        Value = 70
+    }
+
+    VisualTab:CreateToggle({
+        Name = "Изменять угол обзора (FOV)",
+        CurrentValue = false,
+        Flag = "FOVToggle",
+        Callback = function(Value)
+            FOVSettings.Enabled = Value
+            if not Value then 
+                Camera.FieldOfView = 70 -- Сброс на стандартный FOV Roblox
+            end
+        end
+    })
+
+    VisualTab:CreateSlider({
+        Name = "Значение FOV",
+        Range = {30, 120},
+        Increment = 1,
+        CurrentValue = 70,
+        Flag = "FOVValue",
+        Callback = function(Value)
+            FOVSettings.Value = Value
+        end
+    })
+
+    -- ==========================================
+    -- ШЕЙДЕРЫ И КРАСИВАЯ ГРАФИКА
+    -- ==========================================
+    local ShadersFolder = Instance.new("Folder")
+    ShadersFolder.Name = "XCLIENT_Shaders"
+
+    -- Bloom (свечение неоновых деталей)
+    local Bloom = Instance.new("BloomEffect", ShadersFolder)
+    Bloom.Intensity = 1.2
+    Bloom.Size = 24
+    Bloom.Threshold = 0.8
+
+    -- ColorCorrection (сочность, контраст и яркость)
+    local ColorCorr = Instance.new("ColorCorrectionEffect", ShadersFolder)
+    ColorCorr.Contrast = 0.15
+    ColorCorr.Saturation = 0.25
+    ColorCorr.Brightness = 0.02
+
+    -- SunRays (солнечные лучи)
+    local SunRays = Instance.new("SunRaysEffect", ShadersFolder)
+    SunRays.Intensity = 0.25
+
+    VisualTab:CreateToggle({
+        Name = "Кинематографичные шейдеры",
+        CurrentValue = false,
+        Flag = "ShadersToggle",
+        Callback = function(Value)
+            if Value then
+                ShadersFolder.Parent = Lighting
+            else
+                ShadersFolder.Parent = nil
+            end
+        end
+    })
+
+    -- ==========================================
     -- РЕНДЕР ЦИКЛ И ЛОГИКА
     -- ==========================================
     local hue = 0
@@ -213,6 +279,11 @@ return function(Window)
 
     RunService.RenderStepped:Connect(function(deltaTime)
         frames = frames + 1
+        
+        -- Обновление FOV
+        if FOVSettings.Enabled then
+            Camera.FieldOfView = FOVSettings.Value
+        end
         
         -- Обновление HUD
         if HudSettings.Enabled then
@@ -240,7 +311,6 @@ return function(Window)
             local Character = LocalPlayer.Character
             if Character and Character:FindFirstChild("Head") and Character:FindFirstChild("Humanoid") and Character.Humanoid.Health > 0 then
                 ChinaHat.Parent = workspace
-                -- 0.5 (высота половины головы персонажа) + 0.3 (нужное смещение выше головы) = 0.8
                 ChinaHat.CFrame = Character.Head.CFrame * CFrame.new(0, 0.8, 0)
             else
                 ChinaHat.Parent = nil
