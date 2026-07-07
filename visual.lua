@@ -274,7 +274,7 @@ return function(Window)
     PeakMarker.Anchored = true
     PeakMarker.CanCollide = false
     PeakMarker.Shape = Enum.PartType.Cylinder
-    PeakMarker.Size = Vector3.new(0.05, 5, 5) -- Плоский круг под ногами
+    PeakMarker.Size = Vector3.new(0.05, 5, 5)
     PeakMarker.Material = Enum.Material.Neon
     PeakMarker.Transparency = 0.5
 
@@ -301,7 +301,18 @@ return function(Window)
         return nil
     end
 
-    -- Проверка нахождения за стеной/препятствием
+    -- Проверка: есть ли у нас пистолет (Шериф / Герой)
+    local function hasGun()
+        local char = LocalPlayer.Character
+        local backpack = LocalPlayer:FindFirstChild("Backpack")
+        
+        local gunInChar = char and (char:FindFirstChild("Gun") or char:FindFirstChild("Revolver"))
+        local gunInBackpack = backpack and (backpack:FindFirstChild("Gun") or backpack:FindFirstChild("Revolver"))
+        
+        return not not (gunInChar or gunInBackpack)
+    end
+
+    -- Проверка нахождения за стеной/препятствием (на углу)
     local function isBehindWall(targetChar)
         if not LocalPlayer.Character or not LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then return false end
         if not targetChar or not targetChar:FindFirstChild("HumanoidRootPart") then return false end
@@ -315,10 +326,10 @@ return function(Window)
         raycastParams.FilterDescendantsInstances = {LocalPlayer.Character, targetChar, ChinaHat, PeakMarker}
         
         local result = workspace:Raycast(origin, direction, raycastParams)
-        return result ~= nil -- Если луч уперся в стену, значит мы за углом
+        return result ~= nil -- Если луч попал в стену, значит мы за углом
     end
 
-    -- Анализ траектории и условий для идеального пика
+    -- Анализ траектории Мардера
     local function checkPeekCondition(targetChar)
         if not targetChar or not targetChar:FindFirstChild("HumanoidRootPart") then return false end
         local targetHrp = targetChar.HumanoidRootPart
@@ -326,17 +337,16 @@ return function(Window)
         
         local velocity = targetHrp.AssemblyLinearVelocity
         
-        -- Условие 1: Мардер стоит на месте (Идеально для пика)
+        -- Мардер стоит на месте
         if velocity.Magnitude < 2 then
             return true
         end
         
-        -- Условие 2: Мардер движется линейно в нашу сторону (без изменения угла движения)
+        -- Мардер идет прямо на наш угол
         local toMeDirection = (myHrp.Position - targetHrp.Position).Unit
         local movementDirection = velocity.Unit
         local dotProduct = movementDirection:Dot(toMeDirection)
         
-        -- Если скалярное произведение > 0.85, значит вектор его движения направлен прямо к нам
         if dotProduct > 0.85 then
             return true
         end
@@ -370,25 +380,25 @@ return function(Window)
         if PeakSettings.Enabled then
             local murderer = getMurderer()
             local myChar = LocalPlayer.Character
+            local iHaveGun = hasGun() -- Проверяем пистолет у себя
             
-            if murderer and myChar and myChar:FindFirstChild("HumanoidRootPart") and myChar:FindFirstChild("Humanoid") and myChar.Humanoid.Health > 0 then
+            -- Включаем логику только если есть Мардер, мы живы, и у нас в руках/бегпэке есть пистолет
+            if murderer and myChar and myChar:FindFirstChild("HumanoidRootPart") and myChar:FindFirstChild("Humanoid") and myChar.Humanoid.Health > 0 and iHaveGun then
+                -- Включаем маркер только если стоим за углом/стеной относительно мардера
                 if isBehindWall(murderer.Character) then
                     PeakMarker.Parent = workspace
                     
-                    -- Привязка метки строго к полу под игроком
                     local floorParams = RaycastParams.new()
                     floorParams.FilterType = Enum.RaycastFilterType.Exclude
                     floorParams.FilterDescendantsInstances = {myChar, murderer.Character, ChinaHat, PeakMarker}
                     
                     local floorRay = workspace:Raycast(myChar.HumanoidRootPart.Position, Vector3.new(0, -15, 0), floorParams)
                     if floorRay then
-                        -- Разворачиваем цилиндр горизонтально, чтобы он лежал как блин
                         PeakMarker.CFrame = CFrame.new(floorRay.Position + Vector3.new(0, 0.05, 0)) * CFrame.Angles(0, 0, math.rad(90))
                     else
                         PeakMarker.CFrame = CFrame.new(myChar.HumanoidRootPart.Position - Vector3.new(0, 2.5, 0)) * CFrame.Angles(0, 0, math.rad(90))
                     end
                     
-                    -- Проверка условий сближения / статики
                     if checkPeekCondition(murderer.Character) then
                         PeakMarker.Color = PeakSettings.ColorSafe
                     else
