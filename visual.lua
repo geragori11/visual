@@ -143,7 +143,7 @@ return function(Window)
     -- Асинхронный поток для скачивания и установки картинки
     task.spawn(function()
         -- СЮДА ВСТАВЬ СВОЮ RAW ССЫЛКУ НА КАРТИНКУ С ГИТХАБА:
-        local githubUrl = "https://raw.githubusercontent.com/ТВОЙ_НИК/ТВОЙ_РЕПОЗИТОРИЙ/main/logo.png"
+        local githubUrl = "https://github.com/geragori11/visual/blob/main/logo.png"
         local filename = "xclient_cached_logo.png"
         
         if writefile and getcustomasset and isfile then
