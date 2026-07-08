@@ -47,6 +47,29 @@ return function(Window)
     HudStroke.Color = Color3.fromRGB(138, 43, 226)
     HudStroke.Thickness = 1.2
     HudStroke.Parent = HudFrame
+
+    local DragWindow = Instance.new("Frame")
+    DragWindow.Name = "XCLIENT_DragWindow"
+    DragWindow.Parent = ScreenGui
+    DragWindow.Position = UDim2.new(0.1, 0, 0.2, 0) -- Начальная позиция на экране
+    DragWindow.Size = UDim2.new(0, 250, 0, 180)     -- Размер окна (Ширина, Высота)
+    DragWindow.BackgroundColor3 = Color3.fromRGB(40, 40, 40) -- Серый цвет
+    DragWindow.BorderSizePixel = 0
+    DragWindow.Visible = true -- По умолчанию включено вместе с HUD
+
+    local WindowTitle = Instance.new("TextLabel")
+    WindowTitle.Name = "Title"
+    WindowTitle.Parent = DragWindow
+    WindowTitle.Size = UDim2.new(1, 0, 0, 30)
+    WindowTitle.BackgroundTransparency = 1
+    WindowTitle.Font = Enum.Font.GothamBold
+    WindowTitle.Text = "XClient"
+    WindowTitle.TextColor3 = Color3.fromRGB(200, 200, 200)
+    WindowTitle.TextSize = 12
+
+    -- Скругление углов серого окна
+    local WindowCorner = Instance.new("UICorner")
+    WindowCorner.CornerRadius = UDim.new(0, 8)
     
     -- Текст
     local HudText = Instance.new("TextLabel")
