@@ -144,7 +144,7 @@ return function(Window)
     task.spawn(function()
         -- СЮДА ВСТАВЬ СВОЮ RAW ССЫЛКУ НА КАРТИНКУ С ГИТХАБА:
         local githubUrl = "https://github.com/geragori11/visual/blob/main/logo.png"
-        local filename = "xclient_cached_logo.png"
+        local filename = "logo.png"
         
         if writefile and getcustomasset and isfile then
             local downloadSuccess, downloadResult = pcall(function()
