@@ -75,7 +75,7 @@ return function(Window)
     DragWindow.Name = "XCLIENTWaterMark"
     DragWindow.Parent = ScreenGui
     DragWindow.Position = UDim2.new(0.1, 0, 0.2, 0)
-    DragWindow.Size = UDim2.new(0, 250, 0, 80) -- Высота 80 пикселей, чтобы всё поместилось
+    DragWindow.Size = UDim2.new(0, 250, 0, 105) 
     DragWindow.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
     DragWindow.BorderSizePixel = 0
     DragWindow.Visible = true
@@ -106,8 +106,8 @@ return function(Window)
     local ExtraText = Instance.new("TextLabel")
     ExtraText.Name = "MurdererText"
     ExtraText.Parent = DragWindow 
-    ExtraText.Position = UDim2.new(0, 12, 0, 30) -- Позиция под заголовком
-    ExtraText.Size = UDim2.new(1, -24, 0, 25) 
+    ExtraText.Position = UDim2.new(0, 12, 0, 30) 
+    ExtraText.Size = UDim2.new(1, -24, 0, 22) 
     ExtraText.BackgroundTransparency = 1
     ExtraText.Font = Enum.Font.Gotham
     ExtraText.TextXAlignment = Enum.TextXAlignment.Left
@@ -119,8 +119,8 @@ return function(Window)
     local ExtraText2 = Instance.new("TextLabel")
     ExtraText2.Name = "SheriffText"
     ExtraText2.Parent = DragWindow 
-    ExtraText2.Position = UDim2.new(0, 12, 0, 52) -- Позиция под надписью мардера
-    ExtraText2.Size = UDim2.new(1, -24, 0, 25) 
+    ExtraText2.Position = UDim2.new(0, 12, 0, 52) 
+    ExtraText2.Size = UDim2.new(1, -24, 0, 22) 
     ExtraText2.BackgroundTransparency = 1
     ExtraText2.Font = Enum.Font.Gotham
     ExtraText2.TextXAlignment = Enum.TextXAlignment.Left
@@ -128,20 +128,58 @@ return function(Window)
     ExtraText2.TextColor3 = Color3.fromRGB(85, 170, 255)
     ExtraText2.TextSize = 12
 
+    -- 4. ИКОНКА (ЛОГОТИП ИЗ ГИТХАБА)
+    local LogoImage = Instance.new("ImageLabel")
+    LogoImage.Name = "LogoIcon"
+    LogoImage.Parent = DragWindow
+    LogoImage.AnchorPoint = Vector2.new(0, 1)
+    LogoImage.Position = UDim2.new(0, 12, 1, -8) -- Выравнивание по нижнему краю (отступ 8px)
+    LogoImage.Size = UDim2.new(0, 16, 0, 16)     -- Квадратный аккуратный логотип
+    LogoImage.BackgroundTransparency = 1
+    LogoImage.Image = "" -- Изначально пустой, загрузится асинхронно
+    
+    _G.XClientWatermarkLogo = LogoImage -- Экспорт логотипа в глобальную среду
 
-        -- 4. НАДПИСЬ Murder Mystery 2
+    -- Асинхронный поток для скачивания и установки картинки
+    task.spawn(function()
+        -- СЮДА ВСТАВЬ СВОЮ RAW ССЫЛКУ НА КАРТИНКУ С ГИТХАБА:
+        local githubUrl = "https://raw.githubusercontent.com/ТВОЙ_НИК/ТВОЙ_РЕПОЗИТОРИЙ/main/logo.png"
+        local filename = "xclient_cached_logo.png"
+        
+        if writefile and getcustomasset and isfile then
+            local downloadSuccess, downloadResult = pcall(function()
+                if not isfile(filename) then
+                    writefile(filename, game:HttpGet(githubUrl))
+                end
+                return getcustomasset(filename)
+            end)
+            
+            if downloadSuccess then
+                LogoImage.Image = downloadResult
+            else
+                warn("[XCLIENT] Ошибка кэширования картинки: " .. tostring(downloadResult))
+            end
+        else
+            -- Если запущено в Roblox Studio без функций читов, подгрузит стандартную заглушку
+            LogoImage.Image = "rbxassetid://0"
+        end
+    end)
+
+    -- 5. НАДПИСЬ ПОД ЛОАДСТРИНГ (Смещена вправо с учетом иконки)
     local ExtraText3 = Instance.new("TextLabel")
     ExtraText3.Name = "GameText"
     ExtraText3.Parent = DragWindow 
-    ExtraText3.AnchorPoint = Vector2.new(0, 1) -- Точка привязки: левый нижний угол текста
-    ExtraText3.Position = UDim2.new(80, 0, 1, 2) -- 12px от левого края, 12px от нижнего края
-    ExtraText3.Size = UDim2.new(1, -24, 0, 25) 
+    ExtraText3.AnchorPoint = Vector2.new(0, 1) 
+    ExtraText3.Position = UDim2.new(0, 34, 1, -8) -- 12px (край) + 16px (лого) + 6px (отступ между ними) = 34px
+    ExtraText3.Size = UDim2.new(1, -46, 0, 16) 
     ExtraText3.BackgroundTransparency = 1
     ExtraText3.Font = Enum.Font.Gotham
     ExtraText3.TextXAlignment = Enum.TextXAlignment.Left
-    ExtraText3.Text = "Murder Mystery 2 "
-    ExtraText3.TextColor3 = Color3.fromRGB(200, 200, 200)
-    ExtraText3.TextSize = 8
+    ExtraText3.Text = "Murder Mystery 2" 
+    ExtraText3.TextColor3 = Color3.fromRGB(220, 220, 220) 
+    ExtraText3.TextSize = 9
+    
+    _G.XClientWatermarkLabel = ExtraText3
 
     -- Логика перетаскивания (Roblox-style)
     local dragging, dragInput, dragStart, startPos
@@ -371,8 +409,6 @@ return function(Window)
         Callback = function(Value)
             if Value then
                 ShadersFolder.Parent = Lighting
-            else
-                ShadersFolder.Parent = nil
             end
         end
     })
@@ -382,8 +418,8 @@ return function(Window)
     -- ==========================================
     local PeakSettings = {
         Enabled = false,
-        ColorSafe = Color3.fromRGB(0, 255, 100),   -- Зеленый (Разрешено пикать)
-        ColorUnsafe = Color3.fromRGB(255, 30, 30)  -- Красный (Запрещено / Опасно)
+        ColorSafe = Color3.fromRGB(0, 255, 100),   
+        ColorUnsafe = Color3.fromRGB(255, 30, 30)  
     }
 
     local PeakMarker = Instance.new("Part")
@@ -405,7 +441,6 @@ return function(Window)
         end
     })
 
-    -- Поиск Мардера по наличию ножа
     local function getMurderer()
         for _, p in ipairs(Players:GetPlayers()) do
             if p ~= LocalPlayer and p.Character then
@@ -418,7 +453,6 @@ return function(Window)
         return nil
     end
 
-    -- Поиск Шерифа по наличию пистолета
     local function getSheriff()
         for _, p in ipairs(Players:GetPlayers()) do
             if p ~= LocalPlayer and p.Character then
@@ -432,7 +466,6 @@ return function(Window)
         return nil
     end
 
-    -- Проверка: есть ли у нас пистолет (Шериф / Герой)
     local function hasGun()
         local char = LocalPlayer.Character
         local backpack = LocalPlayer:FindFirstChild("Backpack")
@@ -443,7 +476,6 @@ return function(Window)
         return not not (gunInChar or gunInBackpack)
     end
 
-    -- Проверка нахождения за стеной/препятствием (на углу)
     local function isBehindWall(targetChar)
         if not LocalPlayer.Character or not LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then return false end
         if not targetChar or not targetChar:FindFirstChild("HumanoidRootPart") then return false end
@@ -460,7 +492,6 @@ return function(Window)
         return result ~= nil
     end
 
-    -- Анализ траектории Мардера
     local function checkPeekCondition(targetChar)
         if not targetChar or not targetChar:FindFirstChild("HumanoidRootPart") then return false end
         local targetHrp = targetChar.HumanoidRootPart
@@ -595,7 +626,7 @@ return function(Window)
         end
 
         -- ==========================================
-        -- ОБНОВЛЕНИЕ НИРОВАННЫХ ДАННЫХ В ОКНЕ
+        -- ОБНОВЛЕНИЕ ДАННЫХ В ОКНЕ
         -- ==========================================
         local currentMurderer = getMurderer()
         if currentMurderer then
