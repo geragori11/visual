@@ -128,6 +128,21 @@ return function(Window)
     ExtraText2.TextColor3 = Color3.fromRGB(85, 170, 255)
     ExtraText2.TextSize = 12
 
+
+        -- 4. НАДПИСЬ Murder Mystery 2
+    local ExtraText3 = Instance.new("TextLabel")
+    ExtraText3.Name = "GameText"
+    ExtraText3.Parent = DragWindow 
+    ExtraText3.AnchorPoint = Vector2.new(0, 1) -- Точка привязки: левый нижний угол текста
+    ExtraText3.Position = UDim2.new(0, 12, 1, -12) -- 12px от левого края, 12px от нижнего края
+    ExtraText3.Size = UDim2.new(1, -24, 0, 25) 
+    ExtraText3.BackgroundTransparency = 1
+    ExtraText3.Font = Enum.Font.Gotham
+    ExtraText3.TextXAlignment = Enum.TextXAlignment.Left
+    ExtraText3.Text = "Murder Mystery 2 "
+    ExtraText3.TextColor3 = Color3.fromRGB(85, 170, 255)
+    ExtraText3.TextSize = 8
+
     -- Логика перетаскивания (Roblox-style)
     local dragging, dragInput, dragStart, startPos
 
