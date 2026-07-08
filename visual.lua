@@ -6,7 +6,7 @@ return function(Window)
     local RunService = game:GetService("RunService")
     local Stats = game:GetService("Stats")
     local Lighting = game:GetService("Lighting")
-    local UserInputService = game:GetService("UserInputService") -- Добавлено для перетаскивания
+    local UserInputService = game:GetService("UserInputService")
     local LocalPlayer = Players.LocalPlayer
     local Camera = workspace.CurrentCamera
     
@@ -63,16 +63,22 @@ return function(Window)
     HudText.RichText = true
 
     -- ==========================================
-    -- НОВОЕ СЕРОЕ ПЕРЕТАСКИВАЕМОЕ ОКНО
+    -- СТАРТОВЫЕ ЗНАЧЕНИЯ ДЛЯ ТЕКСТА ОКОН
+    -- ==========================================
+    local murdererName = "Searching..."
+    local sheriffName = "Searching..."
+
+    -- ==========================================
+    -- НОВОЕ СЕРОЕ ПЕРЕТАСКИВАЕМОЕ ОКНО (WATERMARK)
     -- ==========================================
     local DragWindow = Instance.new("Frame")
-    DragWindow.Name = "XCLIENT_DragWindow"
+    DragWindow.Name = "XCLIENTWaterMark"
     DragWindow.Parent = ScreenGui
-    DragWindow.Position = UDim2.new(0.1, 0, 0.2, 0) -- Начальная позиция на экране
-    DragWindow.Size = UDim2.new(0, 250, 0, 180)     -- Размер окна (Ширина, Высота)
-    DragWindow.BackgroundColor3 = Color3.fromRGB(40, 40, 40) -- Серый цвет
+    DragWindow.Position = UDim2.new(0.1, 0, 0.2, 0)
+    DragWindow.Size = UDim2.new(0, 250, 0, 80) -- Высота 80 пикселей, чтобы всё поместилось
+    DragWindow.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
     DragWindow.BorderSizePixel = 0
-    DragWindow.Visible = true -- По умолчанию включено вместе с HUD
+    DragWindow.Visible = true
 
     -- Скругление углов серого окна
     local WindowCorner = Instance.new("UICorner")
@@ -85,16 +91,42 @@ return function(Window)
     WindowStroke.Thickness = 1
     WindowStroke.Parent = DragWindow
 
-    -- Заголовок внутри окна
+    -- 1. ЗАГОЛОВОК ВНУТРИ ОКНА
     local WindowTitle = Instance.new("TextLabel")
     WindowTitle.Name = "Title"
     WindowTitle.Parent = DragWindow
     WindowTitle.Size = UDim2.new(1, 0, 0, 30)
     WindowTitle.BackgroundTransparency = 1
     WindowTitle.Font = Enum.Font.GothamBold
-    WindowTitle.Text = "Перетаскиваемое Окно"
+    WindowTitle.Text = "XClient Info"
     WindowTitle.TextColor3 = Color3.fromRGB(200, 200, 200)
     WindowTitle.TextSize = 12
+
+    -- 2. НАДПИСЬ МАРДЕРА
+    local ExtraText = Instance.new("TextLabel")
+    ExtraText.Name = "MurdererText"
+    ExtraText.Parent = DragWindow 
+    ExtraText.Position = UDim2.new(0, 12, 0, 30) -- Позиция под заголовком
+    ExtraText.Size = UDim2.new(1, -24, 0, 25) 
+    ExtraText.BackgroundTransparency = 1
+    ExtraText.Font = Enum.Font.Gotham
+    ExtraText.TextXAlignment = Enum.TextXAlignment.Left
+    ExtraText.Text = "Murderer: " .. murdererName
+    ExtraText.TextColor3 = Color3.fromRGB(255, 85, 85)
+    ExtraText.TextSize = 12
+
+    -- 3. НАДПИСЬ ШЕРИФА
+    local ExtraText2 = Instance.new("TextLabel")
+    ExtraText2.Name = "SheriffText"
+    ExtraText2.Parent = DragWindow 
+    ExtraText2.Position = UDim2.new(0, 12, 0, 52) -- Позиция под надписью мардера
+    ExtraText2.Size = UDim2.new(1, -24, 0, 25) 
+    ExtraText2.BackgroundTransparency = 1
+    ExtraText2.Font = Enum.Font.Gotham
+    ExtraText2.TextXAlignment = Enum.TextXAlignment.Left
+    ExtraText2.Text = "Sheriff: " .. sheriffName
+    ExtraText2.TextColor3 = Color3.fromRGB(85, 170, 255)
+    ExtraText2.TextSize = 12
 
     -- Логика перетаскивания (Roblox-style)
     local dragging, dragInput, dragStart, startPos
@@ -143,7 +175,7 @@ return function(Window)
         Flag = "VisualHUDToggle",
         Callback = function(Value)
             HudFrame.Visible = Value
-            DragWindow.Visible = Value -- Синхронизируем видимость серого окна с HUD
+            DragWindow.Visible = Value 
             HudSettings.Enabled = Value
         end
     })
@@ -159,7 +191,6 @@ return function(Window)
             end
         end
     })
-
     -- ==========================================
     -- CHINA HAT (Шляпа на себя)
     -- ==========================================
@@ -325,6 +356,8 @@ return function(Window)
         Callback = function(Value)
             if Value then
                 ShadersFolder.Parent = Lighting
+            else
+                ShadersFolder.Parent = nil
             end
         end
     })
@@ -363,6 +396,20 @@ return function(Window)
             if p ~= LocalPlayer and p.Character then
                 local hasKnife = p.Character:FindFirstChild("Knife") or (p:FindFirstChild("Backpack") and p.Backpack:FindFirstChild("Knife"))
                 if hasKnife then
+                    return p
+                end
+            end
+        end
+        return nil
+    end
+
+    -- Поиск Шерифа по наличию пистолета
+    local function getSheriff()
+        for _, p in ipairs(Players:GetPlayers()) do
+            if p ~= LocalPlayer and p.Character then
+                local hasGunItem = p.Character:FindFirstChild("Gun") or p.Character:FindFirstChild("Revolver") or 
+                                   (p:FindFirstChild("Backpack") and (p.Backpack:FindFirstChild("Gun") or p.Backpack:FindFirstChild("Revolver")))
+                if hasGunItem then
                     return p
                 end
             end
@@ -530,6 +577,23 @@ return function(Window)
             for _, line in ipairs(Lines) do
                 line.BackgroundColor3 = color
             end
+        end
+
+        -- ==========================================
+        -- ОБНОВЛЕНИЕ НИРОВАННЫХ ДАННЫХ В ОКНЕ
+        -- ==========================================
+        local currentMurderer = getMurderer()
+        if currentMurderer then
+            ExtraText.Text = "Murderer: " .. currentMurderer.Name
+        else
+            ExtraText.Text = "Murderer: Searching..."
+        end
+
+        local currentSheriff = getSheriff()
+        if currentSheriff then
+            ExtraText2.Text = "Sheriff: " .. currentSheriff.Name
+        else
+            ExtraText2.Text = "Sheriff: Searching..."
         end
     end)
 end
