@@ -17,6 +17,7 @@ return function(Window)
     ScreenGui.Name = "XCLIENT_HUD"
     ScreenGui.IgnoreGuiInset = true
     ScreenGui.ResetOnSpawn = false
+    ScreenGui.DisplayOrder = 10 -- Поверх стандартных элементов игры
     
     -- Защита GUI
     local success = pcall(function() ScreenGui.Parent = CoreGui end)
@@ -33,6 +34,7 @@ return function(Window)
     HudFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
     HudFrame.BackgroundTransparency = 0.2
     HudFrame.BorderSizePixel = 0
+    HudFrame.ZIndex = 10 -- Поверх черных полос растяга
     
     local HudCorner = Instance.new("UICorner")
     HudCorner.CornerRadius = UDim.new(0, 6)
@@ -61,6 +63,7 @@ return function(Window)
     HudText.TextColor3 = Color3.fromRGB(220, 220, 220)
     HudText.TextSize = 13
     HudText.RichText = true
+    HudText.ZIndex = 11
 
     -- ==========================================
     -- СТАРТОВЫЕ ЗНАЧЕНИЯ ДЛЯ ТЕКСТА ОКОН
@@ -79,6 +82,7 @@ return function(Window)
     DragWindow.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
     DragWindow.BorderSizePixel = 0
     DragWindow.Visible = true
+    DragWindow.ZIndex = 10 -- Поверх черных полос растяга
 
     -- Скругление углов серого окна
     local WindowCorner = Instance.new("UICorner")
@@ -101,6 +105,7 @@ return function(Window)
     WindowTitle.Text = "XClient Info"
     WindowTitle.TextColor3 = Color3.fromRGB(200, 200, 200)
     WindowTitle.TextSize = 12
+    WindowTitle.ZIndex = 11
 
     -- 2. НАДПИСЬ МАРДЕРА
     local ExtraText = Instance.new("TextLabel")
@@ -114,6 +119,7 @@ return function(Window)
     ExtraText.Text = "Murderer: " .. murdererName
     ExtraText.TextColor3 = Color3.fromRGB(255, 85, 85)
     ExtraText.TextSize = 12
+    ExtraText.ZIndex = 11
 
     -- 3. НАДПИСЬ ШЕРИФА
     local ExtraText2 = Instance.new("TextLabel")
@@ -127,6 +133,7 @@ return function(Window)
     ExtraText2.Text = "Sheriff: " .. sheriffName
     ExtraText2.TextColor3 = Color3.fromRGB(85, 170, 255)
     ExtraText2.TextSize = 12
+    ExtraText2.ZIndex = 11
 
     -- 4. ИКОНКА (ЛОГОТИП ИЗ ГИТХАБА)
     local LogoImage = Instance.new("ImageLabel")
@@ -137,6 +144,7 @@ return function(Window)
     LogoImage.Size = UDim2.new(0, 16, 0, 16)     -- Квадратный аккуратный логотип
     LogoImage.BackgroundTransparency = 1
     LogoImage.Image = "" -- Изначально пустой, загрузится асинхронно
+    LogoImage.ZIndex = 11
     
     _G.XClientWatermarkLogo = LogoImage -- Экспорт логотипа в глобальную среду
 
@@ -178,6 +186,7 @@ return function(Window)
     ExtraText3.Text = "Murder Mystery 2" 
     ExtraText3.TextColor3 = Color3.fromRGB(220, 220, 220) 
     ExtraText3.TextSize = 9
+    ExtraText3.ZIndex = 11
     
     _G.XClientWatermarkLabel = ExtraText3
 
@@ -214,8 +223,10 @@ return function(Window)
             update(input)
         end
     end)
-    -- ==========================================
     
+    -- ==========================================
+    -- НАСТРОЙКИ HUD И ВКЛАДКА
+    -- ==========================================
     local HudSettings = {
         Enabled = true,
         RGB = true,
@@ -244,6 +255,79 @@ return function(Window)
             end
         end
     })
+
+    -- ==========================================
+    -- SCREEN SIZE (Кастомный растяг экрана)
+    -- ==========================================
+    local ScreenSizeSettings = {
+        Enabled = false,
+        WidthPercent = 100
+    }
+
+    -- Левая черная полоса
+    local LeftBar = Instance.new("Frame")
+    LeftBar.Name = "XCLIENT_LeftBar"
+    LeftBar.Parent = ScreenGui
+    LeftBar.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+    LeftBar.BorderSizePixel = 0
+    LeftBar.ZIndex = 1 -- Под интерфейсом читов
+    LeftBar.Visible = false
+
+    -- Правая черная полоса
+    local RightBar = Instance.new("Frame")
+    RightBar.Name = "XCLIENT_RightBar"
+    RightBar.Parent = ScreenGui
+    RightBar.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+    RightBar.BorderSizePixel = 0
+    RightBar.ZIndex = 1 -- Под интерфейсом читов
+    RightBar.Visible = false
+
+    -- Функция пересчета ширины полос
+    local function updateScreenSize()
+        if ScreenSizeSettings.Enabled then
+            local percent = ScreenSizeSettings.WidthPercent / 100
+            local totalWidth = Camera.ViewportSize.X
+            local targetWidth = totalWidth * percent
+            local barWidth = (totalWidth - targetWidth) / 2
+
+            LeftBar.Size = UDim2.new(0, barWidth, 1, 0)
+            LeftBar.Position = UDim2.new(0, 0, 0, 0)
+            LeftBar.Visible = barWidth > 0
+
+            RightBar.Size = UDim2.new(0, barWidth, 1, 0)
+            RightBar.Position = UDim2.new(1, -barWidth, 0, 0)
+            RightBar.Visible = barWidth > 0
+        else
+            LeftBar.Visible = false
+            RightBar.Visible = false
+        end
+    end
+
+    -- Слушаем изменение разрешения игры, чтобы растяг не ломался при ресайзе окна
+    Camera:GetPropertyChangedSignal("ViewportSize"):Connect(updateScreenSize)
+
+    VisualTab:CreateToggle({
+        Name = "Включить кастомный растяг (ScreenSize)",
+        CurrentValue = false,
+        Flag = "ScreenSizeToggle",
+        Callback = function(Value)
+            ScreenSizeSettings.Enabled = Value
+            updateScreenSize()
+        end
+    })
+
+    VisualTab:CreateSlider({
+        Name = "Ширина экрана (4:3 = 75%, 1:1 = 56%)",
+        Range = {30, 100},
+        Increment = 1,
+        CurrentValue = 100,
+        Flag = "ScreenSizePercent",
+        Callback = function(Value)
+            ScreenSizeSettings.WidthPercent = Value
+            updateScreenSize()
+        end
+    })
+
     -- ==========================================
     -- CHINA HAT (Шляпа на себя)
     -- ==========================================
@@ -305,6 +389,7 @@ return function(Window)
         local Line = Instance.new("Frame", CrosshairFolder)
         Line.BorderSizePixel = 0
         Line.Visible = false
+        Line.ZIndex = 12 -- Всегда поверх черных полос растяга
         table.insert(Lines, Line)
     end
 
@@ -409,6 +494,8 @@ return function(Window)
         Callback = function(Value)
             if Value then
                 ShadersFolder.Parent = Lighting
+            else
+                ShadersFolder.Parent = nil
             end
         end
     })
