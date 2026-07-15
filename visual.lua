@@ -1,4 +1,4 @@
- return function(Window)
+return function(Window)
 
     local VisualTab = Window:CreateTab("Visual", 4483362458)
 
@@ -801,6 +801,375 @@
 
     -- ==========================================
 
+    -- CUSTOM WORLD (Настройка мира)
+
+    -- ==========================================
+
+    local CustomWorldSettings = {
+
+        Enabled = false,
+
+        Color = Color3.fromRGB(255, 255, 255),
+
+        Strength = 0.5,
+
+        Transparency = 0,
+
+        FogEnabled = false,
+
+        FogEnd = 1000,
+
+        OriginalColors = {},
+
+        OriginalTransparencies = {}
+
+    }
+
+
+    -- Сохраняем исходные настройки освещения карты
+
+    local OriginalLighting = {
+
+        Ambient = Lighting.Ambient,
+
+        OutdoorAmbient = Lighting.OutdoorAmbient,
+
+        FogColor = Lighting.FogColor,
+
+        FogEnd = Lighting.FogEnd,
+
+        FogStart = Lighting.FogStart
+
+    }
+
+
+    local function applyCustomWorld()
+
+        if not CustomWorldSettings.Enabled then
+
+            -- Восстанавливаем оригинальные цвета и прозрачность деталей
+
+            for part, original in pairs(CustomWorldSettings.OriginalColors) do
+
+                if part and part.Parent then
+
+                    pcall(function() 
+
+                        part.Color = original 
+
+                    end)
+
+                end
+
+            end
+
+            for part, original in pairs(CustomWorldSettings.OriginalTransparencies) do
+
+                if part and part.Parent then
+
+                    pcall(function() 
+
+                        part.Transparency = original 
+
+                    end)
+
+                end
+
+            end
+
+            table.clear(CustomWorldSettings.OriginalColors)
+
+            table.clear(CustomWorldSettings.OriginalTransparencies)
+
+            
+
+            -- Восстанавливаем освещение
+
+            Lighting.Ambient = OriginalLighting.Ambient
+
+            Lighting.OutdoorAmbient = OriginalLighting.OutdoorAmbient
+
+            Lighting.FogColor = OriginalLighting.FogColor
+
+            Lighting.FogEnd = OriginalLighting.FogEnd
+
+            Lighting.FogStart = OriginalLighting.FogStart
+
+            return
+
+        end
+
+
+        -- Применяем изменения к существующим деталям в workspace
+
+        for _, part in ipairs(workspace:GetDescendants()) do
+
+            if part:IsA("BasePart") and not part:IsDescendantOf(LocalPlayer.Character) and not part.Name:match("XCLIENT") then
+
+                local isWall = string.lower(part.Name):match("wall") or string.lower(part.Name):match("стена")
+
+                
+
+                -- Запоминаем дефолтные параметры, если они еще не сохранены
+
+                if not CustomWorldSettings.OriginalColors[part] then
+
+                    CustomWorldSettings.OriginalColors[part] = part.Color
+
+                end
+
+                if not CustomWorldSettings.OriginalTransparencies[part] then
+
+                    CustomWorldSettings.OriginalTransparencies[part] = part.Transparency
+
+                end
+
+
+                local baseColor = CustomWorldSettings.OriginalColors[part]
+
+                if isWall then
+
+                    -- Стены перекрашиваются сильнее и к ним применяется прозрачность
+
+                    pcall(function()
+
+                        part.Color = baseColor:Lerp(CustomWorldSettings.Color, CustomWorldSettings.Strength)
+
+                        part.Transparency = CustomWorldSettings.Transparency
+
+                    end)
+
+                else
+
+                    -- Остальные детали красятся чуть мягче, чтобы мир не сливался в кашу
+
+                    pcall(function()
+
+                        part.Color = baseColor:Lerp(CustomWorldSettings.Color, CustomWorldSettings.Strength * 0.4)
+
+                    end)
+
+                end
+
+            end
+
+        end
+
+
+        -- Настраиваем глобальное освещение под выбранный цвет тона
+
+        Lighting.Ambient = CustomWorldSettings.Color:Lerp(Color3.fromRGB(0, 0, 0), 0.4)
+
+        Lighting.OutdoorAmbient = CustomWorldSettings.Color:Lerp(Color3.fromRGB(0, 0, 0), 0.2)
+
+        
+
+        -- Логика тумана
+
+        if CustomWorldSettings.FogEnabled then
+
+            Lighting.FogColor = CustomWorldSettings.Color
+
+            Lighting.FogEnd = CustomWorldSettings.FogEnd
+
+            Lighting.FogStart = 0
+
+        else
+
+            Lighting.FogEnd = 100000 -- Виртуально отключаем туман
+
+        end
+
+    end
+
+
+    -- Автоматическое окрашивание новых деталей, которые спавнятся по ходу игры
+
+    workspace.DescendantAdded:Connect(function(part)
+
+        if CustomWorldSettings.Enabled then
+
+            task.wait(0.1) -- Небольшая задержка, чтобы свойства детали успели прогрузиться
+
+            if part:IsA("BasePart") and not part:IsDescendantOf(LocalPlayer.Character) and not part.Name:match("XCLIENT") then
+
+                local isWall = string.lower(part.Name):match("wall") or string.lower(part.Name):match("стена")
+
+                
+
+                if not CustomWorldSettings.OriginalColors[part] then
+
+                    CustomWorldSettings.OriginalColors[part] = part.Color
+
+                end
+
+                if not CustomWorldSettings.OriginalTransparencies[part] then
+
+                    CustomWorldSettings.OriginalTransparencies[part] = part.Transparency
+
+                end
+
+                
+
+                local baseColor = CustomWorldSettings.OriginalColors[part]
+
+                if isWall then
+
+                    pcall(function()
+
+                        part.Color = baseColor:Lerp(CustomWorldSettings.Color, CustomWorldSettings.Strength)
+
+                        part.Transparency = CustomWorldSettings.Transparency
+
+                    end)
+
+                else
+
+                    pcall(function()
+
+                        part.Color = baseColor:Lerp(CustomWorldSettings.Color, CustomWorldSettings.Strength * 0.4)
+
+                    end)
+
+                end
+
+            end
+
+        end
+
+    end)
+
+
+    -- ЭЛЕМЕНТЫ UI ДЛЯ НАСТРОЙКИ CUSTOM WORLD
+
+    VisualTab:CreateToggle({
+
+        Name = "Кастомный мир (Custom World)",
+
+        CurrentValue = false,
+
+        Flag = "CustomWorldToggle",
+
+        Callback = function(Value)
+
+            CustomWorldSettings.Enabled = Value
+
+            applyCustomWorld()
+
+        end
+
+    })
+
+
+    VisualTab:CreateColorPicker({
+
+        Name = "Цвет мира",
+
+        Color = Color3.fromRGB(255, 255, 255),
+
+        Flag = "CustomWorldColor",
+
+        Callback = function(Value)
+
+            CustomWorldSettings.Color = Value
+
+            if CustomWorldSettings.Enabled then applyCustomWorld() end
+
+        end
+
+    })
+
+
+    VisualTab:CreateSlider({
+
+        Name = "Сила тона (Интенсивность)",
+
+        Range = {0, 100},
+
+        Increment = 1,
+
+        CurrentValue = 50,
+
+        Flag = "CustomWorldStrength",
+
+        Callback = function(Value)
+
+            CustomWorldSettings.Strength = Value / 100
+
+            if CustomWorldSettings.Enabled then applyCustomWorld() end
+
+        end
+
+    })
+
+
+    VisualTab:CreateSlider({
+
+        Name = "Прозрачность стен",
+
+        Range = {0, 100},
+
+        Increment = 1,
+
+        CurrentValue = 0,
+
+        Flag = "CustomWorldTransparency",
+
+        Callback = function(Value)
+
+            CustomWorldSettings.Transparency = Value / 100
+
+            if CustomWorldSettings.Enabled then applyCustomWorld() end
+
+        end
+
+    })
+
+
+    VisualTab:CreateToggle({
+
+        Name = "Включить туман",
+
+        CurrentValue = false,
+
+        Flag = "CustomWorldFogToggle",
+
+        Callback = function(Value)
+
+            CustomWorldSettings.FogEnabled = Value
+
+            if CustomWorldSettings.Enabled then applyCustomWorld() end
+
+        end
+
+    })
+
+
+    VisualTab:CreateSlider({
+
+        Name = "Дальность тумана",
+
+        Range = {100, 5000},
+
+        Increment = 50,
+
+        CurrentValue = 1000,
+
+        Flag = "CustomWorldFogEnd",
+
+        Callback = function(Value)
+
+            CustomWorldSettings.FogEnd = Value
+
+            if CustomWorldSettings.Enabled then applyCustomWorld() end
+
+        end
+
+    })
+
+
+    -- ==========================================
+
     -- PEAK ASSISTANT (Помощник пиков)
 
     -- ==========================================
@@ -1244,4 +1613,4 @@
 
     end)
 
-end 
+end
