@@ -1613,4 +1613,563 @@ return function(Window)
 
     end)
 
+
+    -- ==========================================
+
+    -- CUSTOM GUN (Клиентский кастомный пистолет)
+
+    -- ==========================================
+
+    local GunSettings = {
+
+        Enabled = false,
+
+        Style = "Снайперка",
+
+        Color = Color3.fromRGB(138, 43, 226),
+
+        Particles = true,
+
+        Scale = 1,
+
+        HideOriginal = true
+
+    }
+
+
+
+    local GunModelHandle = nil
+
+    local GunModelStyle = nil
+
+    local GunParts = {}
+
+    local GunOriginalTransparency = {}
+
+    local GunMuzzle = nil
+
+    local GunLight = nil
+
+
+
+    local function destroyGunParts()
+
+        for _, part in ipairs(GunParts) do
+
+            if part and part.Parent then part:Destroy() end
+
+        end
+
+        table.clear(GunParts)
+
+        GunMuzzle = nil
+
+        GunLight = nil
+
+        GunModelHandle = nil
+
+        GunModelStyle = nil
+
+    end
+
+
+
+    local function restoreGunVisibility()
+
+        for handle, trans in pairs(GunOriginalTransparency) do
+
+            if handle and handle.Parent then
+
+                pcall(function() handle.Transparency = trans end)
+
+            end
+
+        end
+
+        table.clear(GunOriginalTransparency)
+
+    end
+
+
+
+    local function clearCustomGun()
+
+        destroyGunParts()
+
+        restoreGunVisibility()
+
+    end
+
+
+
+    local function addGunPart(handle, name, size, offsetCFrame, shape, material)
+
+        local part = Instance.new("Part")
+
+        part.Name = "XCLIENT_" .. name
+
+        part.Size = size
+
+        part.Color = GunSettings.Color
+
+        part.Material = material or Enum.Material.Metal
+
+        part.Anchored = false
+
+        part.CanCollide = false
+
+        part.Massless = true
+
+        part.CanQuery = false
+
+        part.CanTouch = false
+
+        part.CastShadow = false
+
+        part.TopSurface = Enum.SurfaceType.Smooth
+
+        part.BottomSurface = Enum.SurfaceType.Smooth
+
+        if shape then part.Shape = shape end
+
+        part:SetAttribute("BaseSize", size)
+
+        part.CFrame = handle.CFrame * offsetCFrame
+
+        part.Parent = handle
+
+        local weld = Instance.new("WeldConstraint")
+
+        weld.Part0 = handle
+
+        weld.Part1 = part
+
+        weld.Parent = part
+
+        table.insert(GunParts, part)
+
+        return part
+
+    end
+
+
+
+    local function addMuzzle(handle, offsetCFrame)
+
+        local muzzle = addGunPart(handle, "Muzzle", Vector3.new(0.22, 0.24, 0.24), offsetCFrame, Enum.PartType.Cylinder, Enum.Material.Neon)
+
+        local emitter = Instance.new("ParticleEmitter")
+
+        emitter.Name = "XCLIENT_MuzzleFlash"
+
+        emitter.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+
+        emitter.Color = ColorSequence.new(GunSettings.Color, Color3.new(1, 1, 1))
+
+        emitter.LightEmission = 1
+
+        emitter.LightInfluence = 0
+
+        emitter.Size = NumberSequence.new(0.7, 0)
+
+        emitter.Transparency = NumberSequence.new(0)
+
+        emitter.Lifetime = NumberRange.new(0.12, 0.25)
+
+        emitter.Speed = NumberRange.new(4, 9)
+
+        emitter.SpreadAngle = Vector2.new(25, 25)
+
+        emitter.Rate = GunSettings.Particles and 12 or 0
+
+        emitter.Enabled = true
+
+        emitter.Parent = muzzle
+
+        local light = Instance.new("PointLight")
+
+        light.Name = "XCLIENT_MuzzleLight"
+
+        light.Color = GunSettings.Color
+
+        light.Range = 12
+
+        light.Brightness = GunSettings.Particles and 3 or 0
+
+        light.Parent = muzzle
+
+        GunMuzzle = muzzle
+
+        GunLight = light
+
+        return muzzle
+
+    end
+
+
+
+    local function buildSniper(handle)
+
+        addGunPart(handle, "Body", Vector3.new(0.32, 0.32, 1.3), CFrame.new(0, 0.12, -0.55))
+
+        addGunPart(handle, "Barrel", Vector3.new(2.1, 0.16, 0.16), CFrame.new(0, 0.22, -1.7) * CFrame.Angles(0, math.rad(90), 0), Enum.PartType.Cylinder)
+
+        addGunPart(handle, "Scope", Vector3.new(0.2, 0.2, 0.95), CFrame.new(0, 0.62, -0.7))
+
+        addGunPart(handle, "ScopeLens", Vector3.new(0.12, 0.24, 0.24), CFrame.new(0, 0.62, -1.2) * CFrame.Angles(0, math.rad(90), 0), Enum.PartType.Cylinder, Enum.Material.Neon)
+
+        addGunPart(handle, "Stock", Vector3.new(0.22, 0.28, 0.9), CFrame.new(0, -0.02, 0.5))
+
+        addGunPart(handle, "Grip", Vector3.new(0.16, 0.55, 0.22), CFrame.new(0, -0.4, 0.2))
+
+        addMuzzle(handle, CFrame.new(0, 0.22, -2.72) * CFrame.Angles(0, math.rad(90), 0))
+
+    end
+
+
+
+    local function buildPistol(handle)
+
+        addGunPart(handle, "Body", Vector3.new(0.26, 0.3, 0.85), CFrame.new(0, 0.1, -0.35), nil, Enum.Material.SmoothPlastic)
+
+        addGunPart(handle, "Barrel", Vector3.new(0.7, 0.14, 0.14), CFrame.new(0, 0.2, -0.95) * CFrame.Angles(0, math.rad(90), 0), Enum.PartType.Cylinder)
+
+        addGunPart(handle, "Slide", Vector3.new(0.24, 0.12, 0.85), CFrame.new(0, 0.28, -0.4), nil, Enum.Material.SmoothPlastic)
+
+        addGunPart(handle, "Grip", Vector3.new(0.16, 0.55, 0.24), CFrame.new(0, -0.4, 0.02), nil, Enum.Material.SmoothPlastic)
+
+        addMuzzle(handle, CFrame.new(0, 0.2, -1.35) * CFrame.Angles(0, math.rad(90), 0))
+
+    end
+
+
+
+    local function buildMinigun(handle)
+
+        addGunPart(handle, "Body", Vector3.new(0.5, 0.5, 1.1), CFrame.new(0, 0.1, -0.4))
+
+        for i = 0, 5 do
+
+            local angle = (math.pi * 2 / 6) * i
+
+            local x = math.sin(angle) * 0.13
+
+            local y = 0.2 + math.cos(angle) * 0.13
+
+            addGunPart(handle, "Barrel" .. i, Vector3.new(1.7, 0.09, 0.09), CFrame.new(x, y, -1.6) * CFrame.Angles(0, math.rad(90), 0), Enum.PartType.Cylinder)
+
+        end
+
+        addGunPart(handle, "Grip", Vector3.new(0.18, 0.5, 0.22), CFrame.new(0, -0.4, 0.15))
+
+        addMuzzle(handle, CFrame.new(0, 0.2, -2.45) * CFrame.Angles(0, math.rad(90), 0))
+
+    end
+
+
+
+    local function buildVanilla(handle)
+
+        addGunPart(handle, "Body", Vector3.new(0.3, 0.3, 1.0), CFrame.new(0, 0.1, -0.45), nil, Enum.Material.SmoothPlastic)
+
+        addGunPart(handle, "Barrel", Vector3.new(1.3, 0.14, 0.14), CFrame.new(0, 0.2, -1.4) * CFrame.Angles(0, math.rad(90), 0), Enum.PartType.Cylinder, Enum.Material.SmoothPlastic)
+
+    end
+
+
+
+    local function buildCustomGun(handle)
+
+        local style = GunSettings.Style
+
+        if style == "Пистолет" then
+
+            buildPistol(handle)
+
+        elseif style == "Мини-ган" then
+
+            buildMinigun(handle)
+
+        elseif style == "Ванильный" then
+
+            buildVanilla(handle)
+
+        else
+
+            buildSniper(handle)
+
+        end
+
+    end
+
+
+
+    local function applyGunAppearance()
+
+        for _, part in ipairs(GunParts) do
+
+            part.Color = GunSettings.Color
+
+            local base = part:GetAttribute("BaseSize")
+
+            if base then part.Size = base * GunSettings.Scale end
+
+        end
+
+        if GunMuzzle then
+
+            local emitter = GunMuzzle:FindFirstChildOfClass("ParticleEmitter")
+
+            if emitter then
+
+                emitter.Rate = GunSettings.Particles and 12 or 0
+
+                emitter.Color = ColorSequence.new(GunSettings.Color, Color3.new(1, 1, 1))
+
+            end
+
+        end
+
+        if GunLight then
+
+            GunLight.Color = GunSettings.Color
+
+            GunLight.Brightness = GunSettings.Particles and 3 or 0
+
+        end
+
+    end
+
+
+
+    VisualTab:CreateSection("Custom Gun (Кастомный пистолет)")
+
+
+
+    VisualTab:CreateToggle({
+
+        Name = "Кастомный пистолет (только у тебя)",
+
+        CurrentValue = false,
+
+        Flag = "CustomGunToggle",
+
+        Callback = function(Value)
+
+            GunSettings.Enabled = Value
+
+            if not Value then clearCustomGun() end
+
+        end
+
+    })
+
+
+
+    VisualTab:CreateDropdown({
+
+        Name = "Модель оружия",
+
+        Options = {"Снайперка", "Пистолет", "Мини-ган", "Ванильный"},
+
+        CurrentOption = "Снайперка",
+
+        Flag = "CustomGunStyle",
+
+        Callback = function(Value)
+
+            if type(Value) == "table" then Value = Value[1] end
+
+            if Value then GunSettings.Style = Value end
+
+        end
+
+    })
+
+
+
+    VisualTab:CreateToggle({
+
+        Name = "Скрыть оригинальный пистолет",
+
+        CurrentValue = true,
+
+        Flag = "CustomGunHideOriginal",
+
+        Callback = function(Value) GunSettings.HideOriginal = Value end
+
+    })
+
+
+
+    VisualTab:CreateToggle({
+
+        Name = "Партиклы (Muzzle Flash)",
+
+        CurrentValue = true,
+
+        Flag = "CustomGunParticles",
+
+        Callback = function(Value)
+
+            GunSettings.Particles = Value
+
+            applyGunAppearance()
+
+        end
+
+    })
+
+
+
+    VisualTab:CreateSlider({
+
+        Name = "Размер оружия",
+
+        Range = {0.5, 2.5},
+
+        Increment = 0.1,
+
+        CurrentValue = 1,
+
+        Flag = "CustomGunScale",
+
+        Callback = function(Value)
+
+            GunSettings.Scale = Value
+
+            applyGunAppearance()
+
+        end
+
+    })
+
+
+
+    VisualTab:CreateColorPicker({
+
+        Name = "Цвет оружия",
+
+        Color = Color3.fromRGB(138, 43, 226),
+
+        Flag = "CustomGunColor",
+
+        Callback = function(Value)
+
+            GunSettings.Color = Value
+
+            applyGunAppearance()
+
+        end
+
+    })
+
+
+
+    -- Локальный всплеск партиклов при выстреле (ЛКМ)
+
+    UserInputService.InputBegan:Connect(function(input, processed)
+
+        if processed then return end
+
+        if input.UserInputType ~= Enum.UserInputType.MouseButton1 then return end
+
+        if not GunSettings.Enabled or not GunMuzzle then return end
+
+        local emitter = GunMuzzle:FindFirstChildOfClass("ParticleEmitter")
+
+        if emitter and GunSettings.Particles then
+
+            emitter:Emit(18)
+
+            if GunLight then
+
+                GunLight.Brightness = 8
+
+                task.delay(0.08, function()
+
+                    if GunLight then GunLight.Brightness = GunSettings.Particles and 3 or 0 end
+
+                end)
+
+            end
+
+        end
+
+    end)
+
+
+
+    -- Цикл обслуживания кастомного оружия (полностью клиентский)
+
+    RunService.RenderStepped:Connect(function()
+
+        if not GunSettings.Enabled then
+
+            if #GunParts > 0 or next(GunOriginalTransparency) ~= nil then clearCustomGun() end
+
+            return
+
+        end
+
+
+
+        local character = LocalPlayer.Character
+
+        local gun = character and (character:FindFirstChild("Gun") or character:FindFirstChild("Revolver"))
+
+        local handle = gun and gun:FindFirstChild("Handle")
+
+
+
+        if not handle then
+
+            if #GunParts > 0 then destroyGunParts() end
+
+            return
+
+        end
+
+
+
+        -- Скрываем/возвращаем оригинальный пистолет
+
+        if GunSettings.HideOriginal then
+
+            if GunOriginalTransparency[handle] == nil then
+
+                GunOriginalTransparency[handle] = handle.Transparency
+
+            end
+
+            if handle.Transparency ~= 1 then handle.Transparency = 1 end
+
+        elseif GunOriginalTransparency[handle] ~= nil then
+
+            handle.Transparency = GunOriginalTransparency[handle]
+
+            GunOriginalTransparency[handle] = nil
+
+        end
+
+
+
+        -- Пересобираем модель при смене инструмента или стиля
+
+        if GunModelHandle ~= handle or GunModelStyle ~= GunSettings.Style then
+
+            destroyGunParts()
+
+            buildCustomGun(handle)
+
+            GunModelHandle = handle
+
+            GunModelStyle = GunSettings.Style
+
+            applyGunAppearance()
+
+        end
+
+    end)
+
 end
