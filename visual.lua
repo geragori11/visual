@@ -604,7 +604,8 @@ return function(Window)
         DarkLighting = true,
         ClockTime = 0,
         Brightness = 0.4,
-        Exposure = -1.2
+        Exposure = -1.2,
+        LightInfluence = 100
     }
 
     local CustomAtmosphere = nil
@@ -613,8 +614,55 @@ return function(Window)
     local OriginalLightingAtmosphereState = {
         ClockTime = Lighting.ClockTime,
         Brightness = Lighting.Brightness,
-        ExposureCompensation = Lighting.ExposureCompensation
+        ExposureCompensation = Lighting.ExposureCompensation,
+        EnvironmentDiffuseScale = Lighting.EnvironmentDiffuseScale,
+        EnvironmentSpecularScale = Lighting.EnvironmentSpecularScale
     }
+    local OriginalMapLights = {}
+
+    local function applyLightInfluence()
+        local mult = AtmosphereSettings.LightInfluence / 100
+
+        for _, light in ipairs(workspace:GetDescendants()) do
+            if light:IsA("Light") and not light.Name:match("XCLIENT") and not light:IsDescendantOf(LocalPlayer.Character) then
+                if OriginalMapLights[light] == nil then
+                    OriginalMapLights[light] = light.Brightness
+                end
+                light.Brightness = OriginalMapLights[light] * mult
+            end
+        end
+
+        pcall(function()
+            Lighting.EnvironmentDiffuseScale = OriginalLightingAtmosphereState.EnvironmentDiffuseScale * mult
+            Lighting.EnvironmentSpecularScale = OriginalLightingAtmosphereState.EnvironmentSpecularScale * mult
+        end)
+    end
+
+    local function restoreMapLights()
+        for light, origBrightness in pairs(OriginalMapLights) do
+            if light and light.Parent then
+                pcall(function()
+                    light.Brightness = origBrightness
+                end)
+            end
+        end
+        table.clear(OriginalMapLights)
+
+        pcall(function()
+            Lighting.EnvironmentDiffuseScale = OriginalLightingAtmosphereState.EnvironmentDiffuseScale
+            Lighting.EnvironmentSpecularScale = OriginalLightingAtmosphereState.EnvironmentSpecularScale
+        end)
+    end
+
+    workspace.DescendantAdded:Connect(function(descendant)
+        if AtmosphereSettings.Enabled and descendant:IsA("Light") and not descendant.Name:match("XCLIENT") and not descendant:IsDescendantOf(LocalPlayer.Character) then
+            task.wait(0.05)
+            if OriginalMapLights[descendant] == nil then
+                OriginalMapLights[descendant] = descendant.Brightness
+            end
+            descendant.Brightness = OriginalMapLights[descendant] * (AtmosphereSettings.LightInfluence / 100)
+        end
+    end)
 
     local function applyCustomAtmosphere()
         if not AtmosphereSettings.Enabled then
@@ -631,6 +679,7 @@ return function(Window)
             Lighting.ClockTime = OriginalLightingAtmosphereState.ClockTime
             Lighting.Brightness = OriginalLightingAtmosphereState.Brightness
             Lighting.ExposureCompensation = OriginalLightingAtmosphereState.ExposureCompensation
+            restoreMapLights()
             return
         end
 
@@ -663,6 +712,8 @@ return function(Window)
             Lighting.Brightness = OriginalLightingAtmosphereState.Brightness
             Lighting.ExposureCompensation = OriginalLightingAtmosphereState.ExposureCompensation
         end
+
+        applyLightInfluence()
     end
 
     VisualTab:CreateSection("Custom Atmosphere (Кастомная атмосфера)")
@@ -698,6 +749,20 @@ return function(Window)
         Callback = function(Value)
             AtmosphereSettings.Haze = Value / 10
             if AtmosphereSettings.Enabled then applyCustomAtmosphere() end
+        end
+    })
+
+    VisualTab:CreateSlider({
+        Name = "Влияние света на темноту",
+        Range = {0, 100},
+        Increment = 1,
+        CurrentValue = 100,
+        Flag = "AtmosphereLightInfluence",
+        Callback = function(Value)
+            AtmosphereSettings.LightInfluence = Value
+            if AtmosphereSettings.Enabled then
+                applyLightInfluence()
+            end
         end
     })
 
