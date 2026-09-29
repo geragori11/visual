@@ -591,6 +591,171 @@ return function(Window)
     })
 
     -- ==========================================
+    -- CUSTOM ATMOSPHERE (Кастомная атмосфера)
+    -- ==========================================
+    local AtmosphereSettings = {
+        Enabled = false,
+        Color = Color3.fromRGB(0, 0, 0),
+        Decay = Color3.fromRGB(0, 0, 0),
+        Density = 0.35,
+        Haze = 2.0,
+        Glare = 0,
+        Offset = 0.25,
+        DarkLighting = true,
+        ClockTime = 0,
+        Brightness = 0.5,
+        Exposure = -0.5
+    }
+
+    local CustomAtmosphere = nil
+    local OriginalAtmosphere = nil
+    local OriginalAtmosphereParent = nil
+    local OriginalLightingAtmosphereState = {
+        ClockTime = Lighting.ClockTime,
+        Brightness = Lighting.Brightness,
+        ExposureCompensation = Lighting.ExposureCompensation
+    }
+
+    local function applyCustomAtmosphere()
+        if not AtmosphereSettings.Enabled then
+            if CustomAtmosphere then
+                CustomAtmosphere:Destroy()
+                CustomAtmosphere = nil
+            end
+            if OriginalAtmosphere and OriginalAtmosphereParent then
+                OriginalAtmosphere.Parent = OriginalAtmosphereParent
+                OriginalAtmosphere = nil
+                OriginalAtmosphereParent = nil
+            end
+
+            Lighting.ClockTime = OriginalLightingAtmosphereState.ClockTime
+            Lighting.Brightness = OriginalLightingAtmosphereState.Brightness
+            Lighting.ExposureCompensation = OriginalLightingAtmosphereState.ExposureCompensation
+            return
+        end
+
+        local existing = Lighting:FindFirstChildOfClass("Atmosphere")
+        if existing and existing ~= CustomAtmosphere then
+            OriginalAtmosphere = existing
+            OriginalAtmosphereParent = existing.Parent
+            existing.Parent = nil
+        end
+
+        if not CustomAtmosphere or CustomAtmosphere.Parent ~= Lighting then
+            CustomAtmosphere = Instance.new("Atmosphere")
+            CustomAtmosphere.Name = "XCLIENT_Atmosphere"
+            CustomAtmosphere.Parent = Lighting
+        end
+
+        CustomAtmosphere.Color = AtmosphereSettings.Color
+        CustomAtmosphere.Decay = AtmosphereSettings.Decay
+        CustomAtmosphere.Density = AtmosphereSettings.Density
+        CustomAtmosphere.Haze = AtmosphereSettings.Haze
+        CustomAtmosphere.Glare = AtmosphereSettings.Glare
+        CustomAtmosphere.Offset = AtmosphereSettings.Offset
+
+        if AtmosphereSettings.DarkLighting then
+            Lighting.ClockTime = AtmosphereSettings.ClockTime
+            Lighting.Brightness = AtmosphereSettings.Brightness
+            Lighting.ExposureCompensation = AtmosphereSettings.Exposure
+        else
+            Lighting.ClockTime = OriginalLightingAtmosphereState.ClockTime
+            Lighting.Brightness = OriginalLightingAtmosphereState.Brightness
+            Lighting.ExposureCompensation = OriginalLightingAtmosphereState.ExposureCompensation
+        end
+    end
+
+    VisualTab:CreateSection("Custom Atmosphere (Кастомная атмосфера)")
+
+    VisualTab:CreateToggle({
+        Name = "Включить атмосферу",
+        CurrentValue = false,
+        Flag = "AtmosphereToggle",
+        Callback = function(Value)
+            AtmosphereSettings.Enabled = Value
+            applyCustomAtmosphere()
+        end
+    })
+
+    VisualTab:CreateColorPicker({
+        Name = "Цвет атмосферы (По умолч. Черный)",
+        Color = Color3.fromRGB(0, 0, 0),
+        Flag = "AtmosphereColor",
+        Callback = function(Value)
+            AtmosphereSettings.Color = Value
+            if AtmosphereSettings.Enabled then applyCustomAtmosphere() end
+        end
+    })
+
+    VisualTab:CreateColorPicker({
+        Name = "Цвет рассеивания (Decay)",
+        Color = Color3.fromRGB(0, 0, 0),
+        Flag = "AtmosphereDecayColor",
+        Callback = function(Value)
+            AtmosphereSettings.Decay = Value
+            if AtmosphereSettings.Enabled then applyCustomAtmosphere() end
+        end
+    })
+
+    VisualTab:CreateSlider({
+        Name = "Плотность тумана (Density)",
+        Range = {0, 100},
+        Increment = 1,
+        CurrentValue = 35,
+        Flag = "AtmosphereDensity",
+        Callback = function(Value)
+            AtmosphereSettings.Density = Value / 100
+            if AtmosphereSettings.Enabled then applyCustomAtmosphere() end
+        end
+    })
+
+    VisualTab:CreateSlider({
+        Name = "Интенсивность дымки (Haze)",
+        Range = {0, 100},
+        Increment = 1,
+        CurrentValue = 20,
+        Flag = "AtmosphereHaze",
+        Callback = function(Value)
+            AtmosphereSettings.Haze = Value / 10
+            if AtmosphereSettings.Enabled then applyCustomAtmosphere() end
+        end
+    })
+
+    VisualTab:CreateToggle({
+        Name = "Кинематографичная тьма (Dark World)",
+        CurrentValue = true,
+        Flag = "AtmosphereDarkToggle",
+        Callback = function(Value)
+            AtmosphereSettings.DarkLighting = Value
+            if AtmosphereSettings.Enabled then applyCustomAtmosphere() end
+        end
+    })
+
+    VisualTab:CreateSlider({
+        Name = "Время суток (ClockTime)",
+        Range = {0, 24},
+        Increment = 1,
+        CurrentValue = 0,
+        Flag = "AtmosphereClockTime",
+        Callback = function(Value)
+            AtmosphereSettings.ClockTime = Value
+            if AtmosphereSettings.Enabled and AtmosphereSettings.DarkLighting then applyCustomAtmosphere() end
+        end
+    })
+
+    VisualTab:CreateSlider({
+        Name = "Затемнение экспозиции",
+        Range = {-30, 20},
+        Increment = 1,
+        CurrentValue = -5,
+        Flag = "AtmosphereExposure",
+        Callback = function(Value)
+            AtmosphereSettings.Exposure = Value / 10
+            if AtmosphereSettings.Enabled and AtmosphereSettings.DarkLighting then applyCustomAtmosphere() end
+        end
+    })
+
+    -- ==========================================
     -- PEAK ASSISTANT (Помощник пиков)
     -- ==========================================
     local PeakSettings = {
@@ -835,9 +1000,27 @@ return function(Window)
     local GunModelHandle = nil
     local GunModelStyle = nil
     local GunParts = {}
-    local GunOriginalTransparency = {}
+    local GunOriginalProperties = {}
+    local GunOriginalMeshScale = {}
     local GunMuzzle = nil
     local GunLight = nil
+
+    local function getLocalGun()
+        local character = LocalPlayer.Character
+        if not character then return nil end
+        for _, child in ipairs(character:GetChildren()) do
+            if child:IsA("Tool") then
+                local name = string.lower(child.Name)
+                if (name:match("gun") or name:match("revolver") or name:match("пистолет") or name:match("luger") or name:match("shotgun")) and not name:match("knife") then
+                    return child
+                end
+                if child:FindFirstChild("GunServer") or child:FindFirstChild("GunScript") then
+                    return child
+                end
+            end
+        end
+        return nil
+    end
 
     local function destroyGunParts()
         for _, part in ipairs(GunParts) do
@@ -851,12 +1034,24 @@ return function(Window)
     end
 
     local function restoreGunVisibility()
-        for handle, trans in pairs(GunOriginalTransparency) do
-            if handle and handle.Parent then
-                pcall(function() handle.Transparency = trans end)
+        for part, props in pairs(GunOriginalProperties) do
+            if part and part.Parent then
+                pcall(function()
+                    part.Transparency = props.Transparency
+                    part.LocalTransparencyModifier = props.LocalTransparencyModifier
+                end)
             end
         end
-        table.clear(GunOriginalTransparency)
+        table.clear(GunOriginalProperties)
+
+        for mesh, scale in pairs(GunOriginalMeshScale) do
+            if mesh and mesh.Parent then
+                pcall(function()
+                    mesh.Scale = scale
+                end)
+            end
+        end
+        table.clear(GunOriginalMeshScale)
     end
 
     local function clearCustomGun()
@@ -865,9 +1060,10 @@ return function(Window)
     end
 
     local function addGunPart(handle, name, size, offsetCFrame, shape, material)
+        local tool = handle.Parent
         local part = Instance.new("Part")
         part.Name = "XCLIENT_" .. name
-        part.Size = size
+        part.Size = size * GunSettings.Scale
         part.Color = GunSettings.Color
         part.Material = material or Enum.Material.Metal
         part.Anchored = false
@@ -880,12 +1076,20 @@ return function(Window)
         part.BottomSurface = Enum.SurfaceType.Smooth
         if shape then part.Shape = shape end
         part:SetAttribute("BaseSize", size)
-        part.CFrame = handle.CFrame * offsetCFrame
-        part.Parent = handle
-        local weld = Instance.new("WeldConstraint")
+        part:SetAttribute("BaseOffset", offsetCFrame)
+
+        local scaledOffset = CFrame.new(offsetCFrame.Position * GunSettings.Scale) * (offsetCFrame - offsetCFrame.Position)
+        part.CFrame = handle.CFrame * scaledOffset
+        part.Parent = tool
+
+        local weld = Instance.new("Weld")
+        weld.Name = "XCLIENT_Weld"
         weld.Part0 = handle
         weld.Part1 = part
+        weld.C0 = scaledOffset
+        weld.C1 = CFrame.new()
         weld.Parent = part
+
         table.insert(GunParts, part)
         return part
     end
@@ -906,12 +1110,14 @@ return function(Window)
         emitter.Rate = GunSettings.Particles and 12 or 0
         emitter.Enabled = true
         emitter.Parent = muzzle
+
         local light = Instance.new("PointLight")
         light.Name = "XCLIENT_MuzzleLight"
         light.Color = GunSettings.Color
         light.Range = 12
         light.Brightness = GunSettings.Particles and 3 or 0
         light.Parent = muzzle
+
         GunMuzzle = muzzle
         GunLight = light
         return muzzle
@@ -992,7 +1198,19 @@ return function(Window)
         Flag = "CustomGunToggle",
         Callback = function(Value)
             GunSettings.Enabled = Value
-            if not Value then clearCustomGun() end
+            if not Value then
+                clearCustomGun()
+            else
+                local gun = getLocalGun()
+                local handle = gun and (gun:FindFirstChild("Handle") or gun:FindFirstChildWhichIsA("BasePart"))
+                if handle then
+                    destroyGunParts()
+                    buildCustomGun(handle)
+                    GunModelHandle = handle
+                    GunModelStyle = GunSettings.Style
+                    applyGunAppearance()
+                end
+            end
         end
     })
 
@@ -1003,7 +1221,15 @@ return function(Window)
         Flag = "CustomGunStyle",
         Callback = function(Value)
             if type(Value) == "table" then Value = Value[1] end
-            if Value then GunSettings.Style = Value end
+            if Value then
+                GunSettings.Style = Value
+                if GunSettings.Enabled and GunModelHandle then
+                    destroyGunParts()
+                    buildCustomGun(GunModelHandle)
+                    GunModelStyle = GunSettings.Style
+                    applyGunAppearance()
+                end
+            end
         end
     })
 
@@ -1011,7 +1237,12 @@ return function(Window)
         Name = "Скрыть оригинальный пистолет",
         CurrentValue = true,
         Flag = "CustomGunHideOriginal",
-        Callback = function(Value) GunSettings.HideOriginal = Value end
+        Callback = function(Value)
+            GunSettings.HideOriginal = Value
+            if not Value then
+                restoreGunVisibility()
+            end
+        end
     })
 
     VisualTab:CreateToggle({
@@ -1032,7 +1263,11 @@ return function(Window)
         Flag = "CustomGunScale",
         Callback = function(Value)
             GunSettings.Scale = Value
-            applyGunAppearance()
+            if GunSettings.Enabled and GunModelHandle then
+                destroyGunParts()
+                buildCustomGun(GunModelHandle)
+                applyGunAppearance()
+            end
         end
     })
 
@@ -1064,13 +1299,12 @@ return function(Window)
 
     RunService.RenderStepped:Connect(function()
         if not GunSettings.Enabled then
-            if #GunParts > 0 or next(GunOriginalTransparency) ~= nil then clearCustomGun() end
+            if #GunParts > 0 or next(GunOriginalProperties) ~= nil then clearCustomGun() end
             return
         end
 
-        local character = LocalPlayer.Character
-        local gun = character and (character:FindFirstChild("Gun") or character:FindFirstChild("Revolver"))
-        local handle = gun and gun:FindFirstChild("Handle")
+        local gun = getLocalGun()
+        local handle = gun and (gun:FindFirstChild("Handle") or gun:FindFirstChildWhichIsA("BasePart"))
 
         if not handle then
             if #GunParts > 0 then destroyGunParts() end
@@ -1078,13 +1312,25 @@ return function(Window)
         end
 
         if GunSettings.HideOriginal then
-            if GunOriginalTransparency[handle] == nil then
-                GunOriginalTransparency[handle] = handle.Transparency
+            for _, descendant in ipairs(gun:GetDescendants()) do
+                if descendant:IsA("BasePart") and not descendant.Name:match("XCLIENT") then
+                    if GunOriginalProperties[descendant] == nil then
+                        GunOriginalProperties[descendant] = {
+                            Transparency = descendant.Transparency,
+                            LocalTransparencyModifier = descendant.LocalTransparencyModifier
+                        }
+                    end
+                    descendant.Transparency = 1
+                    descendant.LocalTransparencyModifier = 1
+                elseif descendant:IsA("SpecialMesh") then
+                    if GunOriginalMeshScale[descendant] == nil then
+                        GunOriginalMeshScale[descendant] = descendant.Scale
+                    end
+                    descendant.Scale = Vector3.new(0, 0, 0)
+                end
             end
-            if handle.Transparency ~= 1 then handle.Transparency = 1 end
-        elseif GunOriginalTransparency[handle] ~= nil then
-            handle.Transparency = GunOriginalTransparency[handle]
-            GunOriginalTransparency[handle] = nil
+        elseif next(GunOriginalProperties) ~= nil then
+            restoreGunVisibility()
         end
 
         if GunModelHandle ~= handle or GunModelStyle ~= GunSettings.Style then
@@ -1093,6 +1339,12 @@ return function(Window)
             GunModelHandle = handle
             GunModelStyle = GunSettings.Style
             applyGunAppearance()
+        end
+
+        for _, part in ipairs(GunParts) do
+            if part and part.Parent then
+                part.LocalTransparencyModifier = 0
+            end
         end
     end)
 
@@ -1104,7 +1356,7 @@ return function(Window)
         TargetKnife = true,
         TargetGun = true,
         TargetScope = "Все (Я и другие)",
-        Style = "Стекло",
+        Style = "Сплошной (Без текстуры)",
         ThroughWalls = true,
         Color = Color3.fromRGB(255, 35, 90),
         OutlineColor = Color3.fromRGB(255, 255, 255),
@@ -1113,6 +1365,40 @@ return function(Window)
 
     local ChammedParts = {}
     local ChammedHighlights = {}
+    local ChammedMeshTextures = {}
+    local ChammedMeshPartTextures = {}
+    local ChammedDecalTransparencies = {}
+    local ChammedSurfaceAppearances = {}
+
+    local function restoreWeaponTextures()
+        for mesh, texId in pairs(ChammedMeshTextures) do
+            if mesh and mesh.Parent then
+                pcall(function() mesh.TextureId = texId end)
+            end
+        end
+        table.clear(ChammedMeshTextures)
+
+        for meshPart, texId in pairs(ChammedMeshPartTextures) do
+            if meshPart and meshPart.Parent then
+                pcall(function() meshPart.TextureID = texId end)
+            end
+        end
+        table.clear(ChammedMeshPartTextures)
+
+        for decal, trans in pairs(ChammedDecalTransparencies) do
+            if decal and decal.Parent then
+                pcall(function() decal.Transparency = trans end)
+            end
+        end
+        table.clear(ChammedDecalTransparencies)
+
+        for sa, parent in pairs(ChammedSurfaceAppearances) do
+            if sa then
+                pcall(function() sa.Parent = parent end)
+            end
+        end
+        table.clear(ChammedSurfaceAppearances)
+    end
 
     local function restoreWeaponChams()
         for part, orig in pairs(ChammedParts) do
@@ -1126,6 +1412,8 @@ return function(Window)
             end
         end
         table.clear(ChammedParts)
+
+        restoreWeaponTextures()
 
         for tool, hl in pairs(ChammedHighlights) do
             if hl and hl.Parent then
@@ -1141,11 +1429,11 @@ return function(Window)
         local function checkTool(tool, isLocal)
             if not tool or not tool:IsA("Tool") then return end
             local nameLower = string.lower(tool.Name)
-            local isKnife = nameLower:match("knife") or nameLower:match("нож")
-            local isGun = nameLower:match("gun") or nameLower:match("revolver") or nameLower:match("пистолет")
+            local isKnife = nameLower:match("knife") or nameLower:match("нож") or tool:FindFirstChild("KnifeServer")
+            local isGun = nameLower:match("gun") or nameLower:match("revolver") or nameLower:match("пистолет") or tool:FindFirstChild("GunServer")
 
             if (isKnife and WeaponChamsSettings.TargetKnife) or (isGun and WeaponChamsSettings.TargetGun) then
-                if isLocal and isGun and GunSettings.Enabled and GunSettings.HideOriginal then
+                if isLocal and isGun and GunSettings.Enabled then
                     return
                 end
                 table.insert(weapons, tool)
@@ -1184,7 +1472,7 @@ return function(Window)
 
     local function updateWeaponChams()
         if not WeaponChamsSettings.Enabled then
-            if next(ChammedParts) ~= nil or next(ChammedHighlights) ~= nil then
+            if next(ChammedParts) ~= nil or next(ChammedHighlights) ~= nil or next(ChammedMeshTextures) ~= nil then
                 restoreWeaponChams()
             end
             return
@@ -1210,7 +1498,13 @@ return function(Window)
             hl.OutlineColor = WeaponChamsSettings.OutlineColor
             hl.DepthMode = WeaponChamsSettings.ThroughWalls and Enum.HighlightDepthMode.AlwaysOnTop or Enum.HighlightDepthMode.Occluded
 
-            if WeaponChamsSettings.Style == "Highlight" then
+            local isSolid = (WeaponChamsSettings.Style == "Сплошной (Без текстуры)")
+
+            if isSolid then
+                hl.FillTransparency = WeaponChamsSettings.ThroughWalls and 0 or 1
+                hl.OutlineTransparency = WeaponChamsSettings.ThroughWalls and 0 or 1
+                hl.Enabled = true
+            elseif WeaponChamsSettings.Style == "Highlight" then
                 hl.FillTransparency = WeaponChamsSettings.Transparency
                 hl.OutlineTransparency = 0
                 hl.Enabled = true
@@ -1237,29 +1531,64 @@ return function(Window)
                     local col = WeaponChamsSettings.Color
                     local tr = WeaponChamsSettings.Transparency
 
-                    pcall(function()
-                        if style == "Стекло" then
-                            descendant.Material = Enum.Material.Glass
-                            descendant.Color = col
-                            descendant.Transparency = math.clamp(tr, 0.15, 0.92)
-                            descendant.Reflectance = 0.5
-                        elseif style == "Неон" then
-                            descendant.Material = Enum.Material.Neon
-                            descendant.Color = col
-                            descendant.Transparency = tr
-                            descendant.Reflectance = 0
-                        elseif style == "Силовое поле" then
-                            descendant.Material = Enum.Material.ForceField
-                            descendant.Color = col
-                            descendant.Transparency = tr
-                            descendant.Reflectance = 0
-                        elseif style == "Глянец" then
+                    if isSolid then
+                        pcall(function()
                             descendant.Material = Enum.Material.SmoothPlastic
                             descendant.Color = col
-                            descendant.Transparency = tr
-                            descendant.Reflectance = 0.8
-                        end
-                    end)
+                            descendant.Transparency = 0
+                            descendant.Reflectance = 0
+
+                            if descendant:IsA("MeshPart") then
+                                if ChammedMeshPartTextures[descendant] == nil then
+                                    ChammedMeshPartTextures[descendant] = descendant.TextureID
+                                end
+                                descendant.TextureID = ""
+                            end
+
+                            for _, child in ipairs(descendant:GetChildren()) do
+                                if child:IsA("SpecialMesh") then
+                                    if ChammedMeshTextures[child] == nil then
+                                        ChammedMeshTextures[child] = child.TextureId
+                                    end
+                                    child.TextureId = ""
+                                elseif child:IsA("Decal") or child:IsA("Texture") then
+                                    if ChammedDecalTransparencies[child] == nil then
+                                        ChammedDecalTransparencies[child] = child.Transparency
+                                    end
+                                    child.Transparency = 1
+                                elseif child:IsA("SurfaceAppearance") then
+                                    if ChammedSurfaceAppearances[child] == nil then
+                                        ChammedSurfaceAppearances[child] = child.Parent
+                                    end
+                                    child.Parent = nil
+                                end
+                            end
+                        end)
+                    else
+                        pcall(function()
+                            if style == "Стекло" then
+                                descendant.Material = Enum.Material.Glass
+                                descendant.Color = col
+                                descendant.Transparency = math.clamp(tr, 0.15, 0.92)
+                                descendant.Reflectance = 0.5
+                            elseif style == "Неон" then
+                                descendant.Material = Enum.Material.Neon
+                                descendant.Color = col
+                                descendant.Transparency = tr
+                                descendant.Reflectance = 0
+                            elseif style == "Силовое поле" then
+                                descendant.Material = Enum.Material.ForceField
+                                descendant.Color = col
+                                descendant.Transparency = tr
+                                descendant.Reflectance = 0
+                            elseif style == "Глянец" then
+                                descendant.Material = Enum.Material.SmoothPlastic
+                                descendant.Color = col
+                                descendant.Transparency = tr
+                                descendant.Reflectance = 0.8
+                            end
+                        end)
+                    end
                 end
             end
         end
@@ -1329,14 +1658,14 @@ return function(Window)
 
     VisualTab:CreateDropdown({
         Name = "Вид / Материал чамсов",
-        Options = {"Стекло", "Неон", "Силовое поле", "Глянец", "Highlight"},
-        CurrentOption = "Стекло",
+        Options = {"Сплошной (Без текстуры)", "Стекло", "Неон", "Силовое поле", "Глянец", "Highlight"},
+        CurrentOption = "Сплошной (Без текстуры)",
         Flag = "WeaponChamsStyle",
         Callback = function(Value)
             if type(Value) == "table" then Value = Value[1] end
             if Value then
-                WeaponChamsSettings.Style = Value
                 restoreWeaponChams()
+                WeaponChamsSettings.Style = Value
             end
         end
     })
@@ -1349,8 +1678,8 @@ return function(Window)
         Callback = function(Value)
             if type(Value) == "table" then Value = Value[1] end
             if Value then
-                WeaponChamsSettings.TargetScope = Value
                 restoreWeaponChams()
+                WeaponChamsSettings.TargetScope = Value
             end
         end
     })
