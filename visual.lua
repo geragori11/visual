@@ -7,6 +7,8 @@ return function(Window)
     local Stats = game:GetService("Stats")
     local Lighting = game:GetService("Lighting")
     local UserInputService = game:GetService("UserInputService")
+    local TweenService = game:GetService("TweenService")
+    local Debris = game:GetService("Debris")
     local LocalPlayer = Players.LocalPlayer
     local Camera = workspace.CurrentCamera
     
@@ -888,6 +890,161 @@ return function(Window)
         
         return false
     end
+
+    -- ==========================================
+    -- BULLET TRACERS (Трассеры пуль)
+    -- ==========================================
+    local TracerSettings = {
+        Enabled = false,
+        Color = Color3.fromRGB(0, 170, 255),
+        ThroughWalls = true,
+        Duration = 1.5,
+        Thickness = 0.15,
+        OtherPlayers = true
+    }
+
+    local TracersFolder = workspace:FindFirstChild("XCLIENT_Tracers")
+    if not TracersFolder then
+        TracersFolder = Instance.new("Folder")
+        TracersFolder.Name = "XCLIENT_Tracers"
+        TracersFolder.Parent = workspace
+    end
+
+    local function spawnTracer(startPos, endPos)
+        if not TracerSettings.Enabled then return end
+        local distance = (endPos - startPos).Magnitude
+        if distance < 0.5 then return end
+
+        local tracer = Instance.new("Part")
+        tracer.Name = "XCLIENT_BulletTracer"
+        tracer.Anchored = true
+        tracer.CanCollide = false
+        tracer.CanQuery = false
+        tracer.CanTouch = false
+        tracer.CastShadow = false
+        tracer.Material = Enum.Material.Neon
+        tracer.Color = TracerSettings.Color
+        tracer.Shape = Enum.PartType.Cylinder
+        tracer.Size = Vector3.new(distance, TracerSettings.Thickness, TracerSettings.Thickness)
+        tracer.CFrame = CFrame.lookAt(startPos, endPos) * CFrame.new(0, 0, -distance / 2) * CFrame.Angles(0, math.rad(90), 0)
+        tracer.Parent = TracersFolder
+
+        if TracerSettings.ThroughWalls then
+            local hl = Instance.new("Highlight")
+            hl.Name = "XCLIENT_TracerHighlight"
+            hl.Adornee = tracer
+            hl.FillColor = TracerSettings.Color
+            hl.OutlineColor = TracerSettings.Color
+            hl.FillTransparency = 0
+            hl.OutlineTransparency = 1
+            hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+            hl.Parent = tracer
+        end
+
+        local tween = TweenService:Create(tracer, TweenInfo.new(TracerSettings.Duration, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+            Transparency = 1
+        })
+        tween:Play()
+        Debris:AddItem(tracer, TracerSettings.Duration)
+    end
+
+    local function getLocalGunMuzzle()
+        if GunSettings.Enabled and GunMuzzle and GunMuzzle.Parent then
+            return GunMuzzle.Position
+        end
+
+        local char = LocalPlayer.Character
+        if not char then return nil end
+        for _, child in ipairs(char:GetChildren()) do
+            if child:IsA("Tool") then
+                local name = string.lower(child.Name)
+                if (name:match("gun") or name:match("revolver") or name:match("пистолет") or name:match("luger") or name:match("shotgun")) and not name:match("knife") then
+                    local muzzle = child:FindFirstChild("Muzzle") or child:FindFirstChild("Flash")
+                    if muzzle and muzzle:IsA("BasePart") then
+                        return muzzle.Position
+                    end
+                    local handle = child:FindFirstChild("Handle") or child:FindFirstChildWhichIsA("BasePart")
+                    if handle then
+                        return (handle.CFrame * CFrame.new(0, 0.2, -1.2)).Position
+                    end
+                end
+            end
+        end
+        return nil
+    end
+
+    local function getTargetPositionFromMouse()
+        local mousePos = UserInputService:GetMouseLocation()
+        local ray = Camera:ViewportPointToRay(mousePos.X, mousePos.Y)
+        local rayParams = RaycastParams.new()
+        rayParams.FilterType = Enum.RaycastFilterType.Exclude
+
+        local ignoreList = {TracersFolder, ChinaHat, PeakMarker}
+        if LocalPlayer.Character then
+            table.insert(ignoreList, LocalPlayer.Character)
+        end
+        rayParams.FilterDescendantsInstances = ignoreList
+
+        local result = workspace:Raycast(ray.Origin, ray.Direction * 1000, rayParams)
+        if result then
+            return result.Position
+        else
+            return ray.Origin + ray.Direction * 500
+        end
+    end
+
+    UserInputService.InputBegan:Connect(function(input, processed)
+        if processed then return end
+        if input.UserInputType ~= Enum.UserInputType.MouseButton1 and input.UserInputType ~= Enum.UserInputType.Touch then return end
+        if not TracerSettings.Enabled then return end
+
+        local char = LocalPlayer.Character
+        if not char then return end
+        local gun = char:FindFirstChild("Gun") or char:FindFirstChild("Revolver") or char:FindFirstChildWhichIsA("Tool")
+        if not gun then return end
+        local nameLower = string.lower(gun.Name)
+        if not (nameLower:match("gun") or nameLower:match("revolver") or nameLower:match("пистолет") or nameLower:match("luger") or gun:FindFirstChild("GunServer")) or nameLower:match("knife") then
+            return
+        end
+
+        local startPos = getLocalGunMuzzle()
+        if startPos then
+            local endPos = getTargetPositionFromMouse()
+            spawnTracer(startPos, endPos)
+        end
+    end)
+
+    local function monitorWeaponSound(descendant)
+        if descendant:IsA("Sound") then
+            local name = string.lower(descendant.Name)
+            if name:match("shoot") or name:match("shot") or name:match("fire") or name:match("bang") then
+                descendant:GetPropertyChangedSignal("Playing"):Connect(function()
+                    if descendant.Playing and TracerSettings.Enabled and TracerSettings.OtherPlayers then
+                        local parentPart = descendant.Parent
+                        if parentPart and parentPart:IsA("BasePart") then
+                            local tool = parentPart:FindFirstAncestorOfClass("Tool")
+                            local char = tool and tool.Parent
+                            if char and char:IsA("Model") and char ~= LocalPlayer.Character then
+                                local startPos = parentPart.Position
+                                local forward = parentPart.CFrame.LookVector
+                                local rayParams = RaycastParams.new()
+                                rayParams.FilterType = Enum.RaycastFilterType.Exclude
+                                rayParams.FilterDescendantsInstances = {char, TracersFolder, ChinaHat, PeakMarker}
+                                local result = workspace:Raycast(startPos, forward * 1000, rayParams)
+                                local endPos = result and result.Position or (startPos + forward * 500)
+                                spawnTracer(startPos, endPos)
+                            end
+                        end
+                    end
+                end)
+            end
+        end
+    end
+
+    for _, desc in ipairs(workspace:GetDescendants()) do
+        monitorWeaponSound(desc)
+    end
+    workspace.DescendantAdded:Connect(monitorWeaponSound)
 
     -- ==========================================
     -- РЕНДЕР ЦИКЛ И ЛОГИКА
@@ -1776,6 +1933,74 @@ return function(Window)
         Flag = "WeaponChamsTransparency",
         Callback = function(Value)
             WeaponChamsSettings.Transparency = Value / 100
+        end
+    })
+
+    -- ==========================================
+    -- ЭЛЕМЕНТЫ UI ДЛЯ BULLET TRACERS
+    -- ==========================================
+    VisualTab:CreateSection("Bullet Tracers (Трассеры пуль)")
+
+    VisualTab:CreateToggle({
+        Name = "Включить Bullet Tracers",
+        CurrentValue = false,
+        Flag = "BulletTracersToggle",
+        Callback = function(Value)
+            TracerSettings.Enabled = Value
+            if not Value then
+                for _, obj in ipairs(TracersFolder:GetChildren()) do
+                    obj:Destroy()
+                end
+            end
+        end
+    })
+
+    VisualTab:CreateToggle({
+        Name = "Видимость сквозь стены (Wallhack)",
+        CurrentValue = true,
+        Flag = "BulletTracersThroughWalls",
+        Callback = function(Value)
+            TracerSettings.ThroughWalls = Value
+        end
+    })
+
+    VisualTab:CreateToggle({
+        Name = "Трассеры других игроков",
+        CurrentValue = true,
+        Flag = "BulletTracersOtherPlayers",
+        Callback = function(Value)
+            TracerSettings.OtherPlayers = Value
+        end
+    })
+
+    VisualTab:CreateColorPicker({
+        Name = "Цвет трассеров",
+        Color = Color3.fromRGB(0, 170, 255),
+        Flag = "BulletTracersColor",
+        Callback = function(Value)
+            TracerSettings.Color = Value
+        end
+    })
+
+    VisualTab:CreateSlider({
+        Name = "Длительность (сек)",
+        Range = {1, 10},
+        Increment = 1,
+        CurrentValue = 2,
+        Flag = "BulletTracersDuration",
+        Callback = function(Value)
+            TracerSettings.Duration = Value
+        end
+    })
+
+    VisualTab:CreateSlider({
+        Name = "Толщина луча",
+        Range = {1, 10},
+        Increment = 1,
+        CurrentValue = 2,
+        Flag = "BulletTracersThickness",
+        Callback = function(Value)
+            TracerSettings.Thickness = Value / 10
         end
     })
 end
