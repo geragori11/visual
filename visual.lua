@@ -13,6 +13,95 @@ return function(Window)
     local Camera = workspace.CurrentCamera
     
     -- ==========================================
+    -- ВСЕ ТАБЛИЦЫ НАСТРОЕК (В НАЧАЛЕ СКРИПТА)
+    -- ==========================================
+    local HudSettings = {
+        Enabled = true,
+        RGB = true,
+        RGBSpeed = 3
+    }
+
+    local HatSettings = {
+        Enabled = false,
+        Color = Color3.fromRGB(60, 255, 150)
+    }
+
+    local CrosshairSettings = {
+        Enabled = false,
+        Color = Color3.fromRGB(0, 255, 0),
+        Size = 10,
+        Gap = 5,
+        Thickness = 2
+    }
+
+    local FOVSettings = {
+        Enabled = false,
+        Value = 70
+    }
+
+    local CustomWorldSettings = {
+        Enabled = false,
+        Color = Color3.fromRGB(255, 255, 255),
+        Strength = 0.5,
+        Transparency = 0,
+        FogEnabled = false,
+        FogEnd = 1000,
+        OriginalColors = {},
+        OriginalTransparencies = {}
+    }
+
+    local AtmosphereSettings = {
+        Enabled = false,
+        Color = Color3.fromRGB(0, 0, 0),
+        Decay = Color3.fromRGB(0, 0, 0),
+        Density = 0.35,
+        Haze = 2.0,
+        Glare = 0,
+        Offset = 0.25,
+        DarkLighting = true,
+        ClockTime = 0,
+        Brightness = 0.4,
+        Exposure = -1.2,
+        LightInfluence = 100
+    }
+
+    local PeakSettings = {
+        Enabled = false,
+        ColorSafe = Color3.fromRGB(0, 255, 100),   
+        ColorUnsafe = Color3.fromRGB(255, 30, 30)  
+    }
+
+    local GunSettings = {
+        Enabled = false,
+        Style = "Снайперка",
+        Color = Color3.fromRGB(138, 43, 226),
+        Particles = true,
+        Scale = 1,
+        HideOriginal = true
+    }
+
+    local WeaponChamsSettings = {
+        Enabled = false,
+        TargetKnife = true,
+        TargetGun = true,
+        TargetScope = "Все (Я и другие)",
+        Style = "Сплошной (Без текстуры)",
+        ThroughWalls = true,
+        Color = Color3.fromRGB(255, 45, 110),
+        OutlineColor = Color3.fromRGB(255, 255, 255),
+        Transparency = 0.2
+    }
+
+    local TracerSettings = {
+        Enabled = false,
+        Color = Color3.fromRGB(0, 170, 255),
+        ThroughWalls = true,
+        Duration = 2,
+        Thickness = 0.15,
+        OtherPlayers = true
+    }
+
+    -- ==========================================
     -- HUD (XCLIENT)
     -- ==========================================
     local ScreenGui = Instance.new("ScreenGui")
@@ -20,11 +109,9 @@ return function(Window)
     ScreenGui.IgnoreGuiInset = true
     ScreenGui.ResetOnSpawn = false
     
-    -- Защита GUI
     local success = pcall(function() ScreenGui.Parent = CoreGui end)
     if not success then ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui") end
     
-    -- Главный фрейм подложки (авто-расширение под текст)
     local HudFrame = Instance.new("Frame")
     HudFrame.Name = "HudFrame"
     HudFrame.Parent = ScreenGui
@@ -45,13 +132,11 @@ return function(Window)
     HudPadding.PaddingRight = UDim.new(0, 12)
     HudPadding.Parent = HudFrame
     
-    -- Обводка HUD
     local HudStroke = Instance.new("UIStroke")
     HudStroke.Color = Color3.fromRGB(138, 43, 226)
     HudStroke.Thickness = 1.2
     HudStroke.Parent = HudFrame
     
-    -- Текст
     local HudText = Instance.new("TextLabel")
     HudText.Name = "HudText"
     HudText.Parent = HudFrame
@@ -64,14 +149,11 @@ return function(Window)
     HudText.TextSize = 13
     HudText.RichText = true
 
-    -- ==========================================
-    -- СТАРТОВЫЕ ЗНАЧЕНИЯ ДЛЯ ТЕКСТА ОКОН
-    -- ==========================================
     local murdererName = "Searching..."
     local sheriffName = "Searching..."
 
     -- ==========================================
-    -- НОВОЕ СЕРОЕ ПЕРЕТАСКИВАЕМОЕ ОКНО (WATERMARK)
+    -- ОКНО WATERMARK
     -- ==========================================
     local DragWindow = Instance.new("Frame")
     DragWindow.Name = "XCLIENTWaterMark"
@@ -82,18 +164,15 @@ return function(Window)
     DragWindow.BorderSizePixel = 0
     DragWindow.Visible = true
 
-    -- Скругление углов серого окна
     local WindowCorner = Instance.new("UICorner")
     WindowCorner.CornerRadius = UDim.new(0, 8)
     WindowCorner.Parent = DragWindow
 
-    -- Обводка для красоты
     local WindowStroke = Instance.new("UIStroke")
     WindowStroke.Color = Color3.fromRGB(70, 70, 70)
     WindowStroke.Thickness = 1
     WindowStroke.Parent = DragWindow
 
-    -- 1. ЗАГОЛОВОК ВНУТРИ ОКНА
     local WindowTitle = Instance.new("TextLabel")
     WindowTitle.Name = "Title"
     WindowTitle.Parent = DragWindow
@@ -104,7 +183,6 @@ return function(Window)
     WindowTitle.TextColor3 = Color3.fromRGB(200, 200, 200)
     WindowTitle.TextSize = 12
 
-    -- 2. НАДПИСЬ МАРДЕРА
     local ExtraText = Instance.new("TextLabel")
     ExtraText.Name = "MurdererText"
     ExtraText.Parent = DragWindow 
@@ -117,7 +195,6 @@ return function(Window)
     ExtraText.TextColor3 = Color3.fromRGB(255, 85, 85)
     ExtraText.TextSize = 12
 
-    -- 3. НАДПИСЬ ШЕРИФА
     local ExtraText2 = Instance.new("TextLabel")
     ExtraText2.Name = "SheriffText"
     ExtraText2.Parent = DragWindow 
@@ -130,7 +207,6 @@ return function(Window)
     ExtraText2.TextColor3 = Color3.fromRGB(85, 170, 255)
     ExtraText2.TextSize = 12
 
-    -- 4. ИКОНКА (ЛОГОТИП ИЗ ГИТХАБА)
     local LogoImage = Instance.new("ImageLabel")
     LogoImage.Name = "LogoIcon"
     LogoImage.Parent = DragWindow
@@ -164,7 +240,6 @@ return function(Window)
         end
     end)
 
-    -- 5. НАДПИСЬ ПОД ЛОАДСТРИНГ
     local ExtraText3 = Instance.new("TextLabel")
     ExtraText3.Name = "GameText"
     ExtraText3.Parent = DragWindow 
@@ -180,7 +255,6 @@ return function(Window)
     
     _G.XClientWatermarkLabel = ExtraText3
 
-    -- Логика перетаскивания (Roblox-style)
     local dragging, dragInput, dragStart, startPos
 
     local function update(input)
@@ -213,610 +287,26 @@ return function(Window)
             update(input)
         end
     end)
-    -- ==========================================
-    
-    local HudSettings = {
-        Enabled = true,
-        RGB = true,
-        RGBSpeed = 3
-    }
-    
-    VisualTab:CreateToggle({
-        Name = "Отображать HUD",
-        CurrentValue = true,
-        Flag = "VisualHUDToggle",
-        Callback = function(Value)
-            HudFrame.Visible = Value
-            DragWindow.Visible = Value 
-            HudSettings.Enabled = Value
-        end
-    })
-    
-    VisualTab:CreateToggle({
-        Name = "Переливающийся HUD (RGB)",
-        CurrentValue = true,
-        Flag = "VisualHUDRGB",
-        Callback = function(Value)
-            HudSettings.RGB = Value
-            if not Value then
-                HudStroke.Color = Color3.fromRGB(138, 43, 226)
-            end
-        end
-    })
-    -- ==========================================
-    -- CHINA HAT (Шляпа на себя)
-    -- ==========================================
-    local HatSettings = {
-        Enabled = false,
-        Color = Color3.fromRGB(60, 255, 150)
-    }
-    
-    local ChinaHat = Instance.new("Part")
-    ChinaHat.Name = "XCLIENT_ChinaHat"
-    ChinaHat.Anchored = true
-    ChinaHat.CanCollide = false
-    ChinaHat.Material = Enum.Material.Neon
-    ChinaHat.Transparency = 0.5
-    ChinaHat.Size = Vector3.new(1.16, 0.46, 1.16) 
-    ChinaHat.Color = HatSettings.Color
-    
-    local HatMesh = Instance.new("SpecialMesh", ChinaHat)
-    HatMesh.MeshType = Enum.MeshType.FileMesh
-    HatMesh.MeshId = "rbxassetid://1033714"
-    HatMesh.Scale = Vector3.new(1.16, 0.46, 1.16)
-    
-    VisualTab:CreateToggle({
-        Name = "China Hat (На себя)",
-        CurrentValue = false,
-        Flag = "ChinaHatToggle",
-        Callback = function(Value)
-            HatSettings.Enabled = Value
-            if not Value then ChinaHat.Parent = nil end
-        end
-    })
-    
-    VisualTab:CreateColorPicker({
-        Name = "Цвет China Hat",
-        Color = Color3.fromRGB(60, 255, 150),
-        Flag = "ChinaHatColor",
-        Callback = function(Value)
-            HatSettings.Color = Value
-            ChinaHat.Color = Value
-        end
-    })
 
     -- ==========================================
-    -- КАСТОМНЫЙ ПРИЦЕЛ (Crosshair)
+    -- ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ПОИСКА
     -- ==========================================
-    local CrosshairSettings = {
-        Enabled = false,
-        Color = Color3.fromRGB(0, 255, 0),
-        Size = 10,
-        Gap = 5,
-        Thickness = 2
-    }
-    
-    local CrosshairFolder = Instance.new("Folder", ScreenGui)
-    CrosshairFolder.Name = "Crosshair"
-    
-    local Lines = {}
-    for i = 1, 4 do
-        local Line = Instance.new("Frame", CrosshairFolder)
-        Line.BorderSizePixel = 0
-        Line.Visible = false
-        table.insert(Lines, Line)
+    local function getLocalGun()
+        local character = LocalPlayer.Character
+        if not character then return nil end
+        for _, child in ipairs(character:GetChildren()) do
+            if child:IsA("Tool") then
+                local name = string.lower(child.Name)
+                if (name:match("gun") or name:match("revolver") or name:match("пистолет") or name:match("luger") or name:match("shotgun")) and not name:match("knife") then
+                    return child
+                end
+                if child:FindFirstChild("GunServer") or child:FindFirstChild("GunScript") then
+                    return child
+                end
+            end
+        end
+        return nil
     end
-
-    VisualTab:CreateToggle({
-        Name = "Кастомный прицел",
-        CurrentValue = false,
-        Flag = "CrosshairToggle",
-        Callback = function(Value)
-            CrosshairSettings.Enabled = Value
-            for _, line in ipairs(Lines) do line.Visible = Value end
-        end
-    })
-    
-    VisualTab:CreateColorPicker({
-        Name = "Цвет прицела",
-        Color = Color3.fromRGB(0, 255, 0),
-        Flag = "CrosshairColor",
-        Callback = function(Value) CrosshairSettings.Color = Value end
-    })
-
-    VisualTab:CreateSlider({
-        Name = "Размер прицела",
-        Range = {2, 50},
-        Increment = 1,
-        CurrentValue = 10,
-        Flag = "CrosshairSize",
-        Callback = function(Value) CrosshairSettings.Size = Value end
-    })
-
-    VisualTab:CreateSlider({
-        Name = "Зазор прицела (Gap)",
-        Range = {0, 30},
-        Increment = 1,
-        CurrentValue = 5,
-        Flag = "CrosshairGap",
-        Callback = function(Value) CrosshairSettings.Gap = Value end
-    })
-
-    VisualTab:CreateSlider({
-        Name = "Толщина прицела",
-        Range = {1, 10},
-        Increment = 1,
-        CurrentValue = 2,
-        Flag = "CrosshairThickness",
-        Callback = function(Value) CrosshairSettings.Thickness = Value end
-    })
-
-    -- ==========================================
-    -- НАСТРОЙКА FOV (Угол обзора)
-    -- ==========================================
-    local FOVSettings = {
-        Enabled = false,
-        Value = 70
-    }
-
-    VisualTab:CreateToggle({
-        Name = "Изменять угол обзора (FOV)",
-        CurrentValue = false,
-        Flag = "FOVToggle",
-        Callback = function(Value)
-            FOVSettings.Enabled = Value
-            if not Value then 
-                Camera.FieldOfView = 70
-            end
-        end
-    })
-
-    VisualTab:CreateSlider({
-        Name = "Значение FOV",
-        Range = {30, 120},
-        Increment = 1,
-        CurrentValue = 70,
-        Flag = "FOVValue",
-        Callback = function(Value)
-            FOVSettings.Value = Value
-        end
-    })
-
-    -- ==========================================
-    -- ШЕЙДЕРЫ И КРАСИВАЯ ГРАФИКА
-    -- ==========================================
-    local ShadersFolder = Instance.new("Folder")
-    ShadersFolder.Name = "XCLIENT_Shaders"
-
-    local Bloom = Instance.new("BloomEffect", ShadersFolder)
-    Bloom.Intensity = 1.2
-    Bloom.Size = 24
-    Bloom.Threshold = 0.8
-
-    local ColorCorr = Instance.new("ColorCorrectionEffect", ShadersFolder)
-    ColorCorr.Contrast = 0.15
-    ColorCorr.Saturation = 0.25
-    ColorCorr.Brightness = 0.02
-
-    local SunRays = Instance.new("SunRaysEffect", ShadersFolder)
-    SunRays.Intensity = 0.25
-
-    VisualTab:CreateToggle({
-        Name = "Кинематографичные шейдеры",
-        CurrentValue = false,
-        Flag = "ShadersToggle",
-        Callback = function(Value)
-            if Value then
-                ShadersFolder.Parent = Lighting
-            end
-        end
-    })
-
-    -- ==========================================
-    -- CUSTOM WORLD (Настройка мира)
-    -- ==========================================
-    local CustomWorldSettings = {
-        Enabled = false,
-        Color = Color3.fromRGB(255, 255, 255),
-        Strength = 0.5,
-        Transparency = 0,
-        FogEnabled = false,
-        FogEnd = 1000,
-        OriginalColors = {},
-        OriginalTransparencies = {}
-    }
-
-    local OriginalLighting = {
-        Ambient = Lighting.Ambient,
-        OutdoorAmbient = Lighting.OutdoorAmbient,
-        FogColor = Lighting.FogColor,
-        FogEnd = Lighting.FogEnd,
-        FogStart = Lighting.FogStart
-    }
-
-    local function applyCustomWorld()
-        if not CustomWorldSettings.Enabled then
-            for part, original in pairs(CustomWorldSettings.OriginalColors) do
-                if part and part.Parent then
-                    pcall(function() 
-                        part.Color = original 
-                    end)
-                end
-            end
-            for part, original in pairs(CustomWorldSettings.OriginalTransparencies) do
-                if part and part.Parent then
-                    pcall(function() 
-                        part.Transparency = original 
-                    end)
-                end
-            end
-            table.clear(CustomWorldSettings.OriginalColors)
-            table.clear(CustomWorldSettings.OriginalTransparencies)
-            
-            Lighting.Ambient = OriginalLighting.Ambient
-            Lighting.OutdoorAmbient = OriginalLighting.OutdoorAmbient
-            Lighting.FogColor = OriginalLighting.FogColor
-            Lighting.FogEnd = OriginalLighting.FogEnd
-            Lighting.FogStart = OriginalLighting.FogStart
-            return
-        end
-
-        for _, part in ipairs(workspace:GetDescendants()) do
-            if part:IsA("BasePart") and not part:IsDescendantOf(LocalPlayer.Character) and not part.Name:match("XCLIENT") then
-                local isWall = string.lower(part.Name):match("wall") or string.lower(part.Name):match("стена")
-                
-                if not CustomWorldSettings.OriginalColors[part] then
-                    CustomWorldSettings.OriginalColors[part] = part.Color
-                end
-                if not CustomWorldSettings.OriginalTransparencies[part] then
-                    CustomWorldSettings.OriginalTransparencies[part] = part.Transparency
-                end
-
-                local baseColor = CustomWorldSettings.OriginalColors[part]
-                if isWall then
-                    pcall(function()
-                        part.Color = baseColor:Lerp(CustomWorldSettings.Color, CustomWorldSettings.Strength)
-                        part.Transparency = CustomWorldSettings.Transparency
-                    end)
-                else
-                    pcall(function()
-                        part.Color = baseColor:Lerp(CustomWorldSettings.Color, CustomWorldSettings.Strength * 0.4)
-                    end)
-                end
-            end
-        end
-
-        Lighting.Ambient = CustomWorldSettings.Color:Lerp(Color3.fromRGB(0, 0, 0), 0.4)
-        Lighting.OutdoorAmbient = CustomWorldSettings.Color:Lerp(Color3.fromRGB(0, 0, 0), 0.2)
-        
-        if CustomWorldSettings.FogEnabled then
-            Lighting.FogColor = CustomWorldSettings.Color
-            Lighting.FogEnd = CustomWorldSettings.FogEnd
-            Lighting.FogStart = 0
-        else
-            Lighting.FogEnd = 100000
-        end
-    end
-
-    workspace.DescendantAdded:Connect(function(part)
-        if CustomWorldSettings.Enabled then
-            task.wait(0.1)
-            if part:IsA("BasePart") and not part:IsDescendantOf(LocalPlayer.Character) and not part.Name:match("XCLIENT") then
-                local isWall = string.lower(part.Name):match("wall") or string.lower(part.Name):match("стена")
-                
-                if not CustomWorldSettings.OriginalColors[part] then
-                    CustomWorldSettings.OriginalColors[part] = part.Color
-                end
-                if not CustomWorldSettings.OriginalTransparencies[part] then
-                    CustomWorldSettings.OriginalTransparencies[part] = part.Transparency
-                end
-                
-                local baseColor = CustomWorldSettings.OriginalColors[part]
-                if isWall then
-                    pcall(function()
-                        part.Color = baseColor:Lerp(CustomWorldSettings.Color, CustomWorldSettings.Strength)
-                        part.Transparency = CustomWorldSettings.Transparency
-                    end)
-                else
-                    pcall(function()
-                        part.Color = baseColor:Lerp(CustomWorldSettings.Color, CustomWorldSettings.Strength * 0.4)
-                    end)
-                end
-            end
-        end
-    end)
-
-    VisualTab:CreateToggle({
-        Name = "Кастомный мир (Custom World)",
-        CurrentValue = false,
-        Flag = "CustomWorldToggle",
-        Callback = function(Value)
-            CustomWorldSettings.Enabled = Value
-            applyCustomWorld()
-        end
-    })
-
-    VisualTab:CreateColorPicker({
-        Name = "Цвет мира",
-        Color = Color3.fromRGB(255, 255, 255),
-        Flag = "CustomWorldColor",
-        Callback = function(Value)
-            CustomWorldSettings.Color = Value
-            if CustomWorldSettings.Enabled then applyCustomWorld() end
-        end
-    })
-
-    VisualTab:CreateSlider({
-        Name = "Сила тона (Интенсивность)",
-        Range = {0, 100},
-        Increment = 1,
-        CurrentValue = 50,
-        Flag = "CustomWorldStrength",
-        Callback = function(Value)
-            CustomWorldSettings.Strength = Value / 100
-            if CustomWorldSettings.Enabled then applyCustomWorld() end
-        end
-    })
-
-    VisualTab:CreateSlider({
-        Name = "Прозрачность стен",
-        Range = {0, 100},
-        Increment = 1,
-        CurrentValue = 0,
-        Flag = "CustomWorldTransparency",
-        Callback = function(Value)
-            CustomWorldSettings.Transparency = Value / 100
-            if CustomWorldSettings.Enabled then applyCustomWorld() end
-        end
-    })
-
-    VisualTab:CreateToggle({
-        Name = "Включить туман",
-        CurrentValue = false,
-        Flag = "CustomWorldFogToggle",
-        Callback = function(Value)
-            CustomWorldSettings.FogEnabled = Value
-            if CustomWorldSettings.Enabled then applyCustomWorld() end
-        end
-    })
-
-    VisualTab:CreateSlider({
-        Name = "Дальность тумана",
-        Range = {100, 5000},
-        Increment = 50,
-        CurrentValue = 1000,
-        Flag = "CustomWorldFogEnd",
-        Callback = function(Value)
-            CustomWorldSettings.FogEnd = Value
-            if CustomWorldSettings.Enabled then applyCustomWorld() end
-        end
-    })
-
-    -- ==========================================
-    -- CUSTOM ATMOSPHERE (Кастомная атмосфера)
-    -- ==========================================
-    local AtmosphereSettings = {
-        Enabled = false,
-        Color = Color3.fromRGB(0, 0, 0),
-        Decay = Color3.fromRGB(0, 0, 0),
-        Density = 0.35,
-        Haze = 2.0,
-        Glare = 0,
-        Offset = 0.25,
-        DarkLighting = true,
-        ClockTime = 0,
-        Brightness = 0.4,
-        Exposure = -1.2,
-        LightInfluence = 100
-    }
-
-    local CustomAtmosphere = nil
-    local OriginalAtmosphere = nil
-    local OriginalAtmosphereParent = nil
-    local OriginalLightingAtmosphereState = {
-        ClockTime = Lighting.ClockTime,
-        Brightness = Lighting.Brightness,
-        ExposureCompensation = Lighting.ExposureCompensation,
-        EnvironmentDiffuseScale = Lighting.EnvironmentDiffuseScale,
-        EnvironmentSpecularScale = Lighting.EnvironmentSpecularScale
-    }
-    local OriginalMapLights = {}
-
-    local function applyLightInfluence()
-        local mult = AtmosphereSettings.LightInfluence / 100
-
-        for _, light in ipairs(workspace:GetDescendants()) do
-            if light:IsA("Light") and not light.Name:match("XCLIENT") and not light:IsDescendantOf(LocalPlayer.Character) then
-                if OriginalMapLights[light] == nil then
-                    OriginalMapLights[light] = light.Brightness
-                end
-                light.Brightness = OriginalMapLights[light] * mult
-            end
-        end
-
-        pcall(function()
-            Lighting.EnvironmentDiffuseScale = OriginalLightingAtmosphereState.EnvironmentDiffuseScale * mult
-            Lighting.EnvironmentSpecularScale = OriginalLightingAtmosphereState.EnvironmentSpecularScale * mult
-        end)
-    end
-
-    local function restoreMapLights()
-        for light, origBrightness in pairs(OriginalMapLights) do
-            if light and light.Parent then
-                pcall(function()
-                    light.Brightness = origBrightness
-                end)
-            end
-        end
-        table.clear(OriginalMapLights)
-
-        pcall(function()
-            Lighting.EnvironmentDiffuseScale = OriginalLightingAtmosphereState.EnvironmentDiffuseScale
-            Lighting.EnvironmentSpecularScale = OriginalLightingAtmosphereState.EnvironmentSpecularScale
-        end)
-    end
-
-    workspace.DescendantAdded:Connect(function(descendant)
-        if AtmosphereSettings.Enabled and descendant:IsA("Light") and not descendant.Name:match("XCLIENT") and not descendant:IsDescendantOf(LocalPlayer.Character) then
-            task.wait(0.05)
-            if OriginalMapLights[descendant] == nil then
-                OriginalMapLights[descendant] = descendant.Brightness
-            end
-            descendant.Brightness = OriginalMapLights[descendant] * (AtmosphereSettings.LightInfluence / 100)
-        end
-    end)
-
-    local function applyCustomAtmosphere()
-        if not AtmosphereSettings.Enabled then
-            if CustomAtmosphere then
-                CustomAtmosphere:Destroy()
-                CustomAtmosphere = nil
-            end
-            if OriginalAtmosphere and OriginalAtmosphereParent then
-                OriginalAtmosphere.Parent = OriginalAtmosphereParent
-                OriginalAtmosphere = nil
-                OriginalAtmosphereParent = nil
-            end
-
-            Lighting.ClockTime = OriginalLightingAtmosphereState.ClockTime
-            Lighting.Brightness = OriginalLightingAtmosphereState.Brightness
-            Lighting.ExposureCompensation = OriginalLightingAtmosphereState.ExposureCompensation
-            restoreMapLights()
-            return
-        end
-
-        local existing = Lighting:FindFirstChildOfClass("Atmosphere")
-        if existing and existing ~= CustomAtmosphere then
-            OriginalAtmosphere = existing
-            OriginalAtmosphereParent = existing.Parent
-            existing.Parent = nil
-        end
-
-        if not CustomAtmosphere or CustomAtmosphere.Parent ~= Lighting then
-            CustomAtmosphere = Instance.new("Atmosphere")
-            CustomAtmosphere.Name = "XCLIENT_Atmosphere"
-            CustomAtmosphere.Parent = Lighting
-        end
-
-        CustomAtmosphere.Color = Color3.fromRGB(0, 0, 0)
-        CustomAtmosphere.Decay = Color3.fromRGB(0, 0, 0)
-        CustomAtmosphere.Density = AtmosphereSettings.Density
-        CustomAtmosphere.Haze = AtmosphereSettings.Haze
-        CustomAtmosphere.Glare = AtmosphereSettings.Glare
-        CustomAtmosphere.Offset = AtmosphereSettings.Offset
-
-        if AtmosphereSettings.DarkLighting then
-            Lighting.ClockTime = 0
-            Lighting.Brightness = AtmosphereSettings.Brightness
-            Lighting.ExposureCompensation = AtmosphereSettings.Exposure
-        else
-            Lighting.ClockTime = OriginalLightingAtmosphereState.ClockTime
-            Lighting.Brightness = OriginalLightingAtmosphereState.Brightness
-            Lighting.ExposureCompensation = OriginalLightingAtmosphereState.ExposureCompensation
-        end
-
-        applyLightInfluence()
-    end
-
-    VisualTab:CreateSection("Custom Atmosphere (Кастомная атмосфера)")
-
-    VisualTab:CreateToggle({
-        Name = "Включить атмосферу",
-        CurrentValue = false,
-        Flag = "AtmosphereToggle",
-        Callback = function(Value)
-            AtmosphereSettings.Enabled = Value
-            applyCustomAtmosphere()
-        end
-    })
-
-    VisualTab:CreateSlider({
-        Name = "Плотность тумана (Density)",
-        Range = {0, 100},
-        Increment = 1,
-        CurrentValue = 35,
-        Flag = "AtmosphereDensity",
-        Callback = function(Value)
-            AtmosphereSettings.Density = Value / 100
-            if AtmosphereSettings.Enabled then applyCustomAtmosphere() end
-        end
-    })
-
-    VisualTab:CreateSlider({
-        Name = "Интенсивность дымки (Haze)",
-        Range = {0, 500},
-        Increment = 5,
-        CurrentValue = 20,
-        Flag = "AtmosphereHaze",
-        Callback = function(Value)
-            AtmosphereSettings.Haze = Value / 10
-            if AtmosphereSettings.Enabled then applyCustomAtmosphere() end
-        end
-    })
-
-    VisualTab:CreateSlider({
-        Name = "Влияние света на темноту",
-        Range = {0, 100},
-        Increment = 1,
-        CurrentValue = 100,
-        Flag = "AtmosphereLightInfluence",
-        Callback = function(Value)
-            AtmosphereSettings.LightInfluence = Value
-            if AtmosphereSettings.Enabled then
-                applyLightInfluence()
-            end
-        end
-    })
-
-    VisualTab:CreateToggle({
-        Name = "Кинематографичная тьма (Dark World)",
-        CurrentValue = true,
-        Flag = "AtmosphereDarkToggle",
-        Callback = function(Value)
-            AtmosphereSettings.DarkLighting = Value
-            if AtmosphereSettings.Enabled then applyCustomAtmosphere() end
-        end
-    })
-
-    VisualTab:CreateSlider({
-        Name = "Затемнение экспозиции (Exposure)",
-        Range = {-100, 20},
-        Increment = 1,
-        CurrentValue = -12,
-        Flag = "AtmosphereExposure",
-        Callback = function(Value)
-            AtmosphereSettings.Exposure = Value / 10
-            if AtmosphereSettings.Enabled and AtmosphereSettings.DarkLighting then applyCustomAtmosphere() end
-        end
-    })
-
-    -- ==========================================
-    -- PEAK ASSISTANT (Помощник пиков)
-    -- ==========================================
-    local PeakSettings = {
-        Enabled = false,
-        ColorSafe = Color3.fromRGB(0, 255, 100),   
-        ColorUnsafe = Color3.fromRGB(255, 30, 30)  
-    }
-
-    local PeakMarker = Instance.new("Part")
-    PeakMarker.Name = "XCLIENT_PeakMarker"
-    PeakMarker.Anchored = true
-    PeakMarker.CanCollide = false
-    PeakMarker.Shape = Enum.PartType.Cylinder
-    PeakMarker.Size = Vector3.new(0.05, 5, 5)
-    PeakMarker.Material = Enum.Material.Neon
-    PeakMarker.Transparency = 0.5
-
-    VisualTab:CreateToggle({
-        Name = "Peak Assistant (Углы)",
-        CurrentValue = false,
-        Flag = "PeakAssistantToggle",
-        Callback = function(Value)
-            PeakSettings.Enabled = Value
-            if not Value then PeakMarker.Parent = nil end
-        end
-    })
 
     local function getMurderer()
         for _, p in ipairs(Players:GetPlayers()) do
@@ -853,56 +343,9 @@ return function(Window)
         return not not (gunInChar or gunInBackpack)
     end
 
-    local function isBehindWall(targetChar)
-        if not LocalPlayer.Character or not LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then return false end
-        if not targetChar or not targetChar:FindFirstChild("HumanoidRootPart") then return false end
-        
-        local origin = LocalPlayer.Character.HumanoidRootPart.Position
-        local targetPos = targetChar.HumanoidRootPart.Position
-        local direction = targetPos - origin
-        
-        local raycastParams = RaycastParams.new()
-        raycastParams.FilterType = Enum.RaycastFilterType.Exclude
-        raycastParams.FilterDescendantsInstances = {LocalPlayer.Character, targetChar, ChinaHat, PeakMarker}
-        
-        local result = workspace:Raycast(origin, direction, raycastParams)
-        return result ~= nil
-    end
-
-    local function checkPeekCondition(targetChar)
-        if not targetChar or not targetChar:FindFirstChild("HumanoidRootPart") then return false end
-        local targetHrp = targetChar.HumanoidRootPart
-        local myHrp = LocalPlayer.Character.HumanoidRootPart
-        
-        local velocity = targetHrp.AssemblyLinearVelocity
-        
-        if velocity.Magnitude < 2 then
-            return true
-        end
-        
-        local toMeDirection = (myHrp.Position - targetHrp.Position).Unit
-        local movementDirection = velocity.Unit
-        local dotProduct = movementDirection:Dot(toMeDirection)
-        
-        if dotProduct > 0.85 then
-            return true
-        end
-        
-        return false
-    end
-
     -- ==========================================
-    -- CUSTOM GUN (Клиентский кастомный пистолет)
+    -- СИСТЕМА CUSTOM GUN
     -- ==========================================
-    local GunSettings = {
-        Enabled = false,
-        Style = "Снайперка",
-        Color = Color3.fromRGB(138, 43, 226),
-        Particles = true,
-        Scale = 1,
-        HideOriginal = true
-    }
-
     local GunModelHandle = nil
     local GunModelStyle = nil
     local GunParts = {}
@@ -910,23 +353,6 @@ return function(Window)
     local GunOriginalMeshScale = {}
     local GunMuzzle = nil
     local GunLight = nil
-
-    local function getLocalGun()
-        local character = LocalPlayer.Character
-        if not character then return nil end
-        for _, child in ipairs(character:GetChildren()) do
-            if child:IsA("Tool") then
-                local name = string.lower(child.Name)
-                if (name:match("gun") or name:match("revolver") or name:match("пистолет") or name:match("luger") or name:match("shotgun")) and not name:match("knife") then
-                    return child
-                end
-                if child:FindFirstChild("GunServer") or child:FindFirstChild("GunScript") then
-                    return child
-                end
-            end
-        end
-        return nil
-    end
 
     local function destroyGunParts()
         for _, part in ipairs(GunParts) do
@@ -1096,125 +522,9 @@ return function(Window)
         end
     end
 
-    VisualTab:CreateSection("Custom Gun (Кастомный пистолет)")
-
-    VisualTab:CreateToggle({
-        Name = "Кастомный пистолет (только у тебя)",
-        CurrentValue = false,
-        Flag = "CustomGunToggle",
-        Callback = function(Value)
-            GunSettings.Enabled = Value
-            if not Value then
-                clearCustomGun()
-            else
-                local gun = getLocalGun()
-                local handle = gun and (gun:FindFirstChild("Handle") or gun:FindFirstChildWhichIsA("BasePart"))
-                if handle then
-                    destroyGunParts()
-                    buildCustomGun(handle)
-                    GunModelHandle = handle
-                    GunModelStyle = GunSettings.Style
-                    applyGunAppearance()
-                end
-            end
-        end
-    })
-
-    VisualTab:CreateDropdown({
-        Name = "Модель оружия",
-        Options = {"Снайперка", "Пистолет", "Мини-ган", "Ванильный"},
-        CurrentOption = "Снайперка",
-        Flag = "CustomGunStyle",
-        Callback = function(Value)
-            if type(Value) == "table" then Value = Value[1] end
-            if Value then
-                GunSettings.Style = Value
-                if GunSettings.Enabled and GunModelHandle then
-                    destroyGunParts()
-                    buildCustomGun(GunModelHandle)
-                    GunModelStyle = GunSettings.Style
-                    applyGunAppearance()
-                end
-            end
-        end
-    })
-
-    VisualTab:CreateToggle({
-        Name = "Скрыть оригинальный пистолет",
-        CurrentValue = true,
-        Flag = "CustomGunHideOriginal",
-        Callback = function(Value)
-            GunSettings.HideOriginal = Value
-            if not Value then
-                restoreGunVisibility()
-            end
-        end
-    })
-
-    VisualTab:CreateToggle({
-        Name = "Партиклы (Muzzle Flash)",
-        CurrentValue = true,
-        Flag = "CustomGunParticles",
-        Callback = function(Value)
-            GunSettings.Particles = Value
-            applyGunAppearance()
-        end
-    })
-
-    VisualTab:CreateSlider({
-        Name = "Размер оружия",
-        Range = {0.5, 2.5},
-        Increment = 0.1,
-        CurrentValue = 1,
-        Flag = "CustomGunScale",
-        Callback = function(Value)
-            GunSettings.Scale = Value
-            if GunSettings.Enabled and GunModelHandle then
-                destroyGunParts()
-                buildCustomGun(GunModelHandle)
-                applyGunAppearance()
-            end
-        end
-    })
-
-    VisualTab:CreateColorPicker({
-        Name = "Цвет оружия",
-        Color = Color3.fromRGB(138, 43, 226),
-        Flag = "CustomGunColor",
-        Callback = function(Value)
-            GunSettings.Color = Value
-            applyGunAppearance()
-        end
-    })
-
-    UserInputService.InputBegan:Connect(function(input, processed)
-        if processed then return end
-        if input.UserInputType ~= Enum.UserInputType.MouseButton1 then return end
-        if not GunSettings.Enabled or not GunMuzzle then return end
-        local emitter = GunMuzzle:FindFirstChildOfClass("ParticleEmitter")
-        if emitter and GunSettings.Particles then
-            emitter:Emit(18)
-            if GunLight then
-                GunLight.Brightness = 8
-                task.delay(0.08, function()
-                    if GunLight then GunLight.Brightness = GunSettings.Particles and 3 or 0 end
-                end)
-            end
-        end
-    end)
-
     -- ==========================================
-    -- BULLET TRACERS (Трассеры пуль)
+    -- BULLET TRACERS (ТРАССЕРЫ ПУЛЬ)
     -- ==========================================
-    local TracerSettings = {
-        Enabled = false,
-        Color = Color3.fromRGB(0, 170, 255),
-        ThroughWalls = true,
-        Duration = 2,
-        Thickness = 0.15,
-        OtherPlayers = true
-    }
-
     local TracersFolder = workspace:FindFirstChild("XCLIENT_Tracers")
     if not TracersFolder then
         TracersFolder = Instance.new("Folder")
@@ -1223,7 +533,7 @@ return function(Window)
     end
 
     local function getLocalGunMuzzle()
-        if GunSettings and GunSettings.Enabled and GunMuzzle and GunMuzzle.Parent then
+        if GunSettings.Enabled and GunMuzzle and GunMuzzle.Parent then
             return GunMuzzle.Position
         end
 
@@ -1260,7 +570,7 @@ return function(Window)
         local rayParams = RaycastParams.new()
         rayParams.FilterType = Enum.RaycastFilterType.Exclude
 
-        local ignoreList = {TracersFolder, ChinaHat, PeakMarker}
+        local ignoreList = {TracersFolder}
         if LocalPlayer.Character then
             table.insert(ignoreList, LocalPlayer.Character)
         end
@@ -1325,15 +635,29 @@ return function(Window)
     UserInputService.InputBegan:Connect(function(input, processed)
         if processed then return end
         if input.UserInputType ~= Enum.UserInputType.MouseButton1 and input.UserInputType ~= Enum.UserInputType.Touch then return end
-        if not TracerSettings.Enabled then return end
+        
+        if GunSettings.Enabled and GunMuzzle then
+            local emitter = GunMuzzle:FindFirstChildOfClass("ParticleEmitter")
+            if emitter and GunSettings.Particles then
+                emitter:Emit(18)
+                if GunLight then
+                    GunLight.Brightness = 8
+                    task.delay(0.08, function()
+                        if GunLight then GunLight.Brightness = GunSettings.Particles and 3 or 0 end
+                    end)
+                end
+            end
+        end
 
-        local gun = getLocalGun()
-        if not gun then return end
-
-        local startPos = getLocalGunMuzzle()
-        if startPos then
-            local endPos = getTargetPositionFromMouse()
-            spawnTracer(startPos, endPos)
+        if TracerSettings.Enabled then
+            local gun = getLocalGun()
+            if gun then
+                local startPos = getLocalGunMuzzle()
+                if startPos then
+                    local endPos = getTargetPositionFromMouse()
+                    spawnTracer(startPos, endPos)
+                end
+            end
         end
     end)
 
@@ -1352,7 +676,7 @@ return function(Window)
                                 local forward = parentPart.CFrame.LookVector
                                 local rayParams = RaycastParams.new()
                                 rayParams.FilterType = Enum.RaycastFilterType.Exclude
-                                rayParams.FilterDescendantsInstances = {char, TracersFolder, ChinaHat, PeakMarker}
+                                rayParams.FilterDescendantsInstances = {char, TracersFolder}
                                 local result = workspace:Raycast(startPos, forward * 1000, rayParams)
                                 local endPos = result and result.Position or (startPos + forward * 500)
                                 spawnTracer(startPos, endPos)
@@ -1369,86 +693,319 @@ return function(Window)
     end
     workspace.DescendantAdded:Connect(monitorWeaponSound)
 
-    VisualTab:CreateSection("Bullet Tracers (Трассеры пуль)")
+    -- ==========================================
+    -- ШЛЯПА CHINA HAT
+    -- ==========================================
+    local ChinaHat = Instance.new("Part")
+    ChinaHat.Name = "XCLIENT_ChinaHat"
+    ChinaHat.Anchored = true
+    ChinaHat.CanCollide = false
+    ChinaHat.Material = Enum.Material.Neon
+    ChinaHat.Transparency = 0.5
+    ChinaHat.Size = Vector3.new(1.16, 0.46, 1.16) 
+    ChinaHat.Color = HatSettings.Color
+    
+    local HatMesh = Instance.new("SpecialMesh", ChinaHat)
+    HatMesh.MeshType = Enum.MeshType.FileMesh
+    HatMesh.MeshId = "rbxassetid://1033714"
+    HatMesh.Scale = Vector3.new(1.16, 0.46, 1.16)
 
-    VisualTab:CreateToggle({
-        Name = "Включить Bullet Tracers",
-        CurrentValue = false,
-        Flag = "BulletTracersToggle",
-        Callback = function(Value)
-            TracerSettings.Enabled = Value
-            if not Value then
-                for _, obj in ipairs(TracersFolder:GetChildren()) do
-                    obj:Destroy()
+    -- ==========================================
+    -- КАСТОМНЫЙ ПРИЦЕЛ (CROSSHAIR)
+    -- ==========================================
+    local CrosshairFolder = Instance.new("Folder", ScreenGui)
+    CrosshairFolder.Name = "Crosshair"
+    
+    local Lines = {}
+    for i = 1, 4 do
+        local Line = Instance.new("Frame", CrosshairFolder)
+        Line.BorderSizePixel = 0
+        Line.Visible = false
+        table.insert(Lines, Line)
+    end
+
+    -- ==========================================
+    -- ШЕЙДЕРЫ
+    -- ==========================================
+    local ShadersFolder = Instance.new("Folder")
+    ShadersFolder.Name = "XCLIENT_Shaders"
+
+    local Bloom = Instance.new("BloomEffect", ShadersFolder)
+    Bloom.Intensity = 1.2
+    Bloom.Size = 24
+    Bloom.Threshold = 0.8
+
+    local ColorCorr = Instance.new("ColorCorrectionEffect", ShadersFolder)
+    ColorCorr.Contrast = 0.15
+    ColorCorr.Saturation = 0.25
+    ColorCorr.Brightness = 0.02
+
+    local SunRays = Instance.new("SunRaysEffect", ShadersFolder)
+    SunRays.Intensity = 0.25
+
+    -- ==========================================
+    -- CUSTOM WORLD ЛОГИКА
+    -- ==========================================
+    local OriginalLighting = {
+        Ambient = Lighting.Ambient,
+        OutdoorAmbient = Lighting.OutdoorAmbient,
+        FogColor = Lighting.FogColor,
+        FogEnd = Lighting.FogEnd,
+        FogStart = Lighting.FogStart
+    }
+
+    local function applyCustomWorld()
+        if not CustomWorldSettings.Enabled then
+            for part, original in pairs(CustomWorldSettings.OriginalColors) do
+                if part and part.Parent then
+                    pcall(function() part.Color = original end)
+                end
+            end
+            for part, original in pairs(CustomWorldSettings.OriginalTransparencies) do
+                if part and part.Parent then
+                    pcall(function() part.Transparency = original end)
+                end
+            end
+            table.clear(CustomWorldSettings.OriginalColors)
+            table.clear(CustomWorldSettings.OriginalTransparencies)
+            
+            Lighting.Ambient = OriginalLighting.Ambient
+            Lighting.OutdoorAmbient = OriginalLighting.OutdoorAmbient
+            Lighting.FogColor = OriginalLighting.FogColor
+            Lighting.FogEnd = OriginalLighting.FogEnd
+            Lighting.FogStart = OriginalLighting.FogStart
+            return
+        end
+
+        for _, part in ipairs(workspace:GetDescendants()) do
+            if part:IsA("BasePart") and not part:IsDescendantOf(LocalPlayer.Character) and not part.Name:match("XCLIENT") then
+                local isWall = string.lower(part.Name):match("wall") or string.lower(part.Name):match("стена")
+                
+                if not CustomWorldSettings.OriginalColors[part] then
+                    CustomWorldSettings.OriginalColors[part] = part.Color
+                end
+                if not CustomWorldSettings.OriginalTransparencies[part] then
+                    CustomWorldSettings.OriginalTransparencies[part] = part.Transparency
+                end
+
+                local baseColor = CustomWorldSettings.OriginalColors[part]
+                if isWall then
+                    pcall(function()
+                        part.Color = baseColor:Lerp(CustomWorldSettings.Color, CustomWorldSettings.Strength)
+                        part.Transparency = CustomWorldSettings.Transparency
+                    end)
+                else
+                    pcall(function()
+                        part.Color = baseColor:Lerp(CustomWorldSettings.Color, CustomWorldSettings.Strength * 0.4)
+                    end)
                 end
             end
         end
-    })
 
-    VisualTab:CreateToggle({
-        Name = "Видимость сквозь стены (Wallhack)",
-        CurrentValue = true,
-        Flag = "BulletTracersThroughWalls",
-        Callback = function(Value)
-            TracerSettings.ThroughWalls = Value
+        Lighting.Ambient = CustomWorldSettings.Color:Lerp(Color3.fromRGB(0, 0, 0), 0.4)
+        Lighting.OutdoorAmbient = CustomWorldSettings.Color:Lerp(Color3.fromRGB(0, 0, 0), 0.2)
+        
+        if CustomWorldSettings.FogEnabled then
+            Lighting.FogColor = CustomWorldSettings.Color
+            Lighting.FogEnd = CustomWorldSettings.FogEnd
+            Lighting.FogStart = 0
+        else
+            Lighting.FogEnd = 100000
         end
-    })
+    end
 
-    VisualTab:CreateToggle({
-        Name = "Трассеры других игроков",
-        CurrentValue = true,
-        Flag = "BulletTracersOtherPlayers",
-        Callback = function(Value)
-            TracerSettings.OtherPlayers = Value
+    workspace.DescendantAdded:Connect(function(part)
+        if CustomWorldSettings.Enabled then
+            task.wait(0.1)
+            if part:IsA("BasePart") and not part:IsDescendantOf(LocalPlayer.Character) and not part.Name:match("XCLIENT") then
+                local isWall = string.lower(part.Name):match("wall") or string.lower(part.Name):match("стена")
+                
+                if not CustomWorldSettings.OriginalColors[part] then
+                    CustomWorldSettings.OriginalColors[part] = part.Color
+                end
+                if not CustomWorldSettings.OriginalTransparencies[part] then
+                    CustomWorldSettings.OriginalTransparencies[part] = part.Transparency
+                end
+                
+                local baseColor = CustomWorldSettings.OriginalColors[part]
+                if isWall then
+                    pcall(function()
+                        part.Color = baseColor:Lerp(CustomWorldSettings.Color, CustomWorldSettings.Strength)
+                        part.Transparency = CustomWorldSettings.Transparency
+                    end)
+                else
+                    pcall(function()
+                        part.Color = baseColor:Lerp(CustomWorldSettings.Color, CustomWorldSettings.Strength * 0.4)
+                    end)
+                end
+            end
         end
-    })
-
-    VisualTab:CreateColorPicker({
-        Name = "Цвет трассеров",
-        Color = Color3.fromRGB(0, 170, 255),
-        Flag = "BulletTracersColor",
-        Callback = function(Value)
-            TracerSettings.Color = Value
-        end
-    })
-
-    VisualTab:CreateSlider({
-        Name = "Длительность (сек)",
-        Range = {1, 10},
-        Increment = 1,
-        CurrentValue = 2,
-        Flag = "BulletTracersDuration",
-        Callback = function(Value)
-            TracerSettings.Duration = Value
-        end
-    })
-
-    VisualTab:CreateSlider({
-        Name = "Толщина луча",
-        Range = {1, 10},
-        Increment = 1,
-        CurrentValue = 2,
-        Flag = "BulletTracersThickness",
-        Callback = function(Value)
-            TracerSettings.Thickness = Value / 10
-        end
-    })
+    end)
 
     -- ==========================================
-    -- WEAPON CHAMS (Чамсы на оружие / Нож)
+    -- CUSTOM ATMOSPHERE ЛОГИКА
     -- ==========================================
-    local WeaponChamsSettings = {
-        Enabled = false,
-        TargetKnife = true,
-        TargetGun = true,
-        TargetScope = "Все (Я и другие)",
-        Style = "Сплошной (Без текстуры)",
-        ThroughWalls = true,
-        Color = Color3.fromRGB(255, 45, 110),
-        OutlineColor = Color3.fromRGB(255, 255, 255),
-        Transparency = 0.2
+    local CustomAtmosphere = nil
+    local OriginalAtmosphere = nil
+    local OriginalAtmosphereParent = nil
+    local OriginalLightingAtmosphereState = {
+        ClockTime = Lighting.ClockTime,
+        Brightness = Lighting.Brightness,
+        ExposureCompensation = Lighting.ExposureCompensation,
+        EnvironmentDiffuseScale = Lighting.EnvironmentDiffuseScale,
+        EnvironmentSpecularScale = Lighting.EnvironmentSpecularScale
     }
+    local OriginalMapLights = {}
 
+    local function applyLightInfluence()
+        local mult = AtmosphereSettings.LightInfluence / 100
+
+        for _, light in ipairs(workspace:GetDescendants()) do
+            if light:IsA("Light") and not light.Name:match("XCLIENT") and not light:IsDescendantOf(LocalPlayer.Character) then
+                if OriginalMapLights[light] == nil then
+                    OriginalMapLights[light] = light.Brightness
+                end
+                light.Brightness = OriginalMapLights[light] * mult
+            end
+        end
+
+        pcall(function()
+            Lighting.EnvironmentDiffuseScale = OriginalLightingAtmosphereState.EnvironmentDiffuseScale * mult
+            Lighting.EnvironmentSpecularScale = OriginalLightingAtmosphereState.EnvironmentSpecularScale * mult
+        end)
+    end
+
+    local function restoreMapLights()
+        for light, origBrightness in pairs(OriginalMapLights) do
+            if light and light.Parent then
+                pcall(function()
+                    light.Brightness = origBrightness
+                end)
+            end
+        end
+        table.clear(OriginalMapLights)
+
+        pcall(function()
+            Lighting.EnvironmentDiffuseScale = OriginalLightingAtmosphereState.EnvironmentDiffuseScale
+            Lighting.EnvironmentSpecularScale = OriginalLightingAtmosphereState.EnvironmentSpecularScale
+        end)
+    end
+
+    workspace.DescendantAdded:Connect(function(descendant)
+        if AtmosphereSettings.Enabled and descendant:IsA("Light") and not descendant.Name:match("XCLIENT") and not descendant:IsDescendantOf(LocalPlayer.Character) then
+            task.wait(0.05)
+            if OriginalMapLights[descendant] == nil then
+                OriginalMapLights[descendant] = descendant.Brightness
+            end
+            descendant.Brightness = OriginalMapLights[descendant] * (AtmosphereSettings.LightInfluence / 100)
+        end
+    end)
+
+    local function applyCustomAtmosphere()
+        if not AtmosphereSettings.Enabled then
+            if CustomAtmosphere then
+                CustomAtmosphere:Destroy()
+                CustomAtmosphere = nil
+            end
+            if OriginalAtmosphere and OriginalAtmosphereParent then
+                OriginalAtmosphere.Parent = OriginalAtmosphereParent
+                OriginalAtmosphere = nil
+                OriginalAtmosphereParent = nil
+            end
+
+            Lighting.ClockTime = OriginalLightingAtmosphereState.ClockTime
+            Lighting.Brightness = OriginalLightingAtmosphereState.Brightness
+            Lighting.ExposureCompensation = OriginalLightingAtmosphereState.ExposureCompensation
+            restoreMapLights()
+            return
+        end
+
+        local existing = Lighting:FindFirstChildOfClass("Atmosphere")
+        if existing and existing ~= CustomAtmosphere then
+            OriginalAtmosphere = existing
+            OriginalAtmosphereParent = existing.Parent
+            existing.Parent = nil
+        end
+
+        if not CustomAtmosphere or CustomAtmosphere.Parent ~= Lighting then
+            CustomAtmosphere = Instance.new("Atmosphere")
+            CustomAtmosphere.Name = "XCLIENT_Atmosphere"
+            CustomAtmosphere.Parent = Lighting
+        end
+
+        CustomAtmosphere.Color = Color3.fromRGB(0, 0, 0)
+        CustomAtmosphere.Decay = Color3.fromRGB(0, 0, 0)
+        CustomAtmosphere.Density = AtmosphereSettings.Density
+        CustomAtmosphere.Haze = AtmosphereSettings.Haze
+        CustomAtmosphere.Glare = AtmosphereSettings.Glare
+        CustomAtmosphere.Offset = AtmosphereSettings.Offset
+
+        if AtmosphereSettings.DarkLighting then
+            Lighting.ClockTime = 0
+            Lighting.Brightness = AtmosphereSettings.Brightness
+            Lighting.ExposureCompensation = AtmosphereSettings.Exposure
+        else
+            Lighting.ClockTime = OriginalLightingAtmosphereState.ClockTime
+            Lighting.Brightness = OriginalLightingAtmosphereState.Brightness
+            Lighting.ExposureCompensation = OriginalLightingAtmosphereState.ExposureCompensation
+        end
+
+        applyLightInfluence()
+    end
+
+    -- ==========================================
+    -- PEAK ASSISTANT ЛОГИКА
+    -- ==========================================
+    local PeakMarker = Instance.new("Part")
+    PeakMarker.Name = "XCLIENT_PeakMarker"
+    PeakMarker.Anchored = true
+    PeakMarker.CanCollide = false
+    PeakMarker.Shape = Enum.PartType.Cylinder
+    PeakMarker.Size = Vector3.new(0.05, 5, 5)
+    PeakMarker.Material = Enum.Material.Neon
+    PeakMarker.Transparency = 0.5
+
+    local function isBehindWall(targetChar)
+        if not LocalPlayer.Character or not LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then return false end
+        if not targetChar or not targetChar:FindFirstChild("HumanoidRootPart") then return false end
+        
+        local origin = LocalPlayer.Character.HumanoidRootPart.Position
+        local targetPos = targetChar.HumanoidRootPart.Position
+        local direction = targetPos - origin
+        
+        local raycastParams = RaycastParams.new()
+        raycastParams.FilterType = Enum.RaycastFilterType.Exclude
+        raycastParams.FilterDescendantsInstances = {LocalPlayer.Character, targetChar, ChinaHat, PeakMarker, TracersFolder}
+        
+        local result = workspace:Raycast(origin, direction, raycastParams)
+        return result ~= nil
+    end
+
+    local function checkPeekCondition(targetChar)
+        if not targetChar or not targetChar:FindFirstChild("HumanoidRootPart") then return false end
+        local targetHrp = targetChar.HumanoidRootPart
+        local myHrp = LocalPlayer.Character.HumanoidRootPart
+        
+        local velocity = targetHrp.AssemblyLinearVelocity
+        
+        if velocity.Magnitude < 2 then
+            return true
+        end
+        
+        local toMeDirection = (myHrp.Position - targetHrp.Position).Unit
+        local movementDirection = velocity.Unit
+        local dotProduct = movementDirection:Dot(toMeDirection)
+        
+        if dotProduct > 0.85 then
+            return true
+        end
+        
+        return false
+    end
+
+    -- ==========================================
+    -- WEAPON CHAMS ЛОГИКА
+    -- ==========================================
     local ChammedParts = {}
     local ChammedHighlights = {}
     local ChammedLights = {}
@@ -1532,7 +1089,7 @@ return function(Window)
             local isGun = nameLower:match("gun") or nameLower:match("revolver") or nameLower:match("пистолет") or tool:FindFirstChild("GunServer")
 
             if (isKnife and WeaponChamsSettings.TargetKnife) or (isGun and WeaponChamsSettings.TargetGun) then
-                if isLocal and isGun and GunSettings and GunSettings.Enabled then
+                if isLocal and isGun and GunSettings.Enabled then
                     return
                 end
                 table.insert(weapons, tool)
@@ -1732,7 +1289,613 @@ return function(Window)
         end
     end
 
-    RunService.RenderStepped:Connect(updateWeaponChams)
+    -- ==========================================
+    -- РЕНДЕР ЦИКЛ И ЛОГИКА
+    -- ==========================================
+    local hue = 0
+    local frames = 0
+    local fps = 0
+    
+    task.spawn(function()
+        while task.wait(1) do
+            fps = frames
+            frames = 0
+        end
+    end)
+
+    RunService.RenderStepped:Connect(function(deltaTime)
+        frames = frames + 1
+        
+        if FOVSettings.Enabled then
+            Camera.FieldOfView = FOVSettings.Value
+        end
+
+        if PeakSettings.Enabled then
+            local murderer = getMurderer()
+            local myChar = LocalPlayer.Character
+            local iHaveGun = hasGun()
+            
+            if murderer and myChar and myChar:FindFirstChild("HumanoidRootPart") and myChar:FindFirstChild("Humanoid") and myChar.Humanoid.Health > 0 and iHaveGun then
+                if isBehindWall(murderer.Character) then
+                    PeakMarker.Parent = workspace
+                    
+                    local floorParams = RaycastParams.new()
+                    floorParams.FilterType = Enum.RaycastFilterType.Exclude
+                    floorParams.FilterDescendantsInstances = {myChar, murderer.Character, ChinaHat, PeakMarker, TracersFolder}
+                    
+                    local floorRay = workspace:Raycast(myChar.HumanoidRootPart.Position, Vector3.new(0, -15, 0), floorParams)
+                    if floorRay then
+                        PeakMarker.CFrame = CFrame.new(floorRay.Position + Vector3.new(0, 0.05, 0)) * CFrame.Angles(0, 0, math.rad(90))
+                    else
+                        PeakMarker.CFrame = CFrame.new(myChar.HumanoidRootPart.Position - Vector3.new(0, 2.5, 0)) * CFrame.Angles(0, 0, math.rad(90))
+                    end
+                    
+                    if checkPeekCondition(murderer.Character) then
+                        PeakMarker.Color = PeakSettings.ColorSafe
+                    else
+                        PeakMarker.Color = PeakSettings.ColorUnsafe
+                    end
+                else
+                    PeakMarker.Parent = nil
+                end
+            else
+                PeakMarker.Parent = nil
+            end
+        end
+        
+        if HudSettings.Enabled then
+            local ping = 0
+            pcall(function()
+                ping = math.floor(Stats.Network.ServerStatsItem["Data Ping"]:GetValue())
+            end)
+            
+            if HudSettings.RGB then
+                hue = hue + (deltaTime * (HudSettings.RGBSpeed / 10))
+                if hue > 1 then hue = 0 end
+                
+                local rgbColor = Color3.fromHSV(hue, 1, 1)
+                HudStroke.Color = rgbColor
+                
+                local hexColor = string.format("#%02X%02X%02X", rgbColor.R * 255, rgbColor.G * 255, rgbColor.B * 255)
+                HudText.Text = string.format('<b><font color="%s">xclient</font></b> <font color="#A0A0A0">|</font> geragori <font color="#A0A0A0">|</font> %d fps <font color="#A0A0A0">|</font> %d ms', hexColor, fps, ping)
+            else
+                HudText.Text = string.format('<b><font color="#8A2BE2">xclient</font></b> <font color="#A0A0A0">|</font> geragori <font color="#A0A0A0">|</font> %d fps <font color="#A0A0A0">|</font> %d ms', fps, ping)
+            end
+        end
+
+        if HatSettings.Enabled then
+            local Character = LocalPlayer.Character
+            if Character and Character:FindFirstChild("Head") and Character:FindFirstChild("Humanoid") and Character.Humanoid.Health > 0 then
+                ChinaHat.Parent = workspace
+                ChinaHat.CFrame = Character.Head.CFrame * CFrame.new(0, 0.8, 0)
+            else
+                ChinaHat.Parent = nil
+            end
+        end
+        
+        if CrosshairSettings.Enabled then
+            local Viewport = Camera.ViewportSize
+            local CenterX = Viewport.X / 2
+            local CenterY = Viewport.Y / 2
+            
+            local size = CrosshairSettings.Size
+            local gap = CrosshairSettings.Gap
+            local thick = CrosshairSettings.Thickness
+            local color = CrosshairSettings.Color
+            
+            Lines[1].Size = UDim2.new(0, thick, 0, size)
+            Lines[1].Position = UDim2.new(0, CenterX - thick / 2, 0, CenterY - gap - size)
+            
+            Lines[2].Size = UDim2.new(0, thick, 0, size)
+            Lines[2].Position = UDim2.new(0, CenterX - thick / 2, 0, CenterY + gap)
+            
+            Lines[3].Size = UDim2.new(0, size, 0, thick)
+            Lines[3].Position = UDim2.new(0, CenterX - gap - size, 0, CenterY - thick / 2)
+            
+            Lines[4].Size = UDim2.new(0, size, 0, thick)
+            Lines[4].Position = UDim2.new(0, CenterX + gap, 0, CenterY - thick / 2)
+            
+            for _, line in ipairs(Lines) do
+                line.BackgroundColor3 = color
+            end
+        end
+
+        local currentMurderer = getMurderer()
+        if currentMurderer then
+            ExtraText.Text = "Murderer: " .. currentMurderer.Name
+        else
+            ExtraText.Text = "Murderer: Searching..."
+        end
+
+        local currentSheriff = getSheriff()
+        if currentSheriff then
+            ExtraText2.Text = "Sheriff: " .. currentSheriff.Name
+        else
+            ExtraText2.Text = "Sheriff: Searching..."
+        end
+
+        -- Кастомное оружие
+        if not GunSettings.Enabled then
+            if #GunParts > 0 or next(GunOriginalProperties) ~= nil then clearCustomGun() end
+        else
+            local gun = getLocalGun()
+            local handle = gun and (gun:FindFirstChild("Handle") or gun:FindFirstChildWhichIsA("BasePart"))
+
+            if not handle then
+                if #GunParts > 0 then destroyGunParts() end
+            else
+                if GunSettings.HideOriginal then
+                    for _, descendant in ipairs(gun:GetDescendants()) do
+                        if descendant:IsA("BasePart") and not descendant.Name:match("XCLIENT") then
+                            if GunOriginalProperties[descendant] == nil then
+                                GunOriginalProperties[descendant] = {
+                                    Transparency = descendant.Transparency,
+                                    LocalTransparencyModifier = descendant.LocalTransparencyModifier
+                                }
+                            end
+                            descendant.Transparency = 1
+                            descendant.LocalTransparencyModifier = 1
+                        elseif descendant:IsA("SpecialMesh") then
+                            if GunOriginalMeshScale[descendant] == nil then
+                                GunOriginalMeshScale[descendant] = descendant.Scale
+                            end
+                            descendant.Scale = Vector3.new(0, 0, 0)
+                        end
+                    end
+                elseif next(GunOriginalProperties) ~= nil then
+                    restoreGunVisibility()
+                end
+
+                if GunModelHandle ~= handle or GunModelStyle ~= GunSettings.Style then
+                    destroyGunParts()
+                    buildCustomGun(handle)
+                    GunModelHandle = handle
+                    GunModelStyle = GunSettings.Style
+                    applyGunAppearance()
+                end
+
+                for _, part in ipairs(GunParts) do
+                    if part and part.Parent then
+                        part.LocalTransparencyModifier = 0
+                    end
+                end
+            end
+        end
+
+        updateWeaponChams()
+    end)
+
+    -- ==========================================
+    -- ЭЛЕМЕНТЫ UI
+    -- ==========================================
+    VisualTab:CreateToggle({
+        Name = "Отображать HUD",
+        CurrentValue = true,
+        Flag = "VisualHUDToggle",
+        Callback = function(Value)
+            HudFrame.Visible = Value
+            DragWindow.Visible = Value 
+            HudSettings.Enabled = Value
+        end
+    })
+    
+    VisualTab:CreateToggle({
+        Name = "Переливающийся HUD (RGB)",
+        CurrentValue = true,
+        Flag = "VisualHUDRGB",
+        Callback = function(Value)
+            HudSettings.RGB = Value
+            if not Value then
+                HudStroke.Color = Color3.fromRGB(138, 43, 226)
+            end
+        end
+    })
+
+    VisualTab:CreateToggle({
+        Name = "China Hat (На себя)",
+        CurrentValue = false,
+        Flag = "ChinaHatToggle",
+        Callback = function(Value)
+            HatSettings.Enabled = Value
+            if not Value then ChinaHat.Parent = nil end
+        end
+    })
+    
+    VisualTab:CreateColorPicker({
+        Name = "Цвет China Hat",
+        Color = Color3.fromRGB(60, 255, 150),
+        Flag = "ChinaHatColor",
+        Callback = function(Value)
+            HatSettings.Color = Value
+            ChinaHat.Color = Value
+        end
+    })
+
+    VisualTab:CreateToggle({
+        Name = "Кастомный прицел",
+        CurrentValue = false,
+        Flag = "CrosshairToggle",
+        Callback = function(Value)
+            CrosshairSettings.Enabled = Value
+            for _, line in ipairs(Lines) do line.Visible = Value end
+        end
+    })
+    
+    VisualTab:CreateColorPicker({
+        Name = "Цвет прицела",
+        Color = Color3.fromRGB(0, 255, 0),
+        Flag = "CrosshairColor",
+        Callback = function(Value) CrosshairSettings.Color = Value end
+    })
+
+    VisualTab:CreateSlider({
+        Name = "Размер прицела",
+        Range = {2, 50},
+        Increment = 1,
+        CurrentValue = 10,
+        Flag = "CrosshairSize",
+        Callback = function(Value) CrosshairSettings.Size = Value end
+    })
+
+    VisualTab:CreateSlider({
+        Name = "Зазор прицела (Gap)",
+        Range = {0, 30},
+        Increment = 1,
+        CurrentValue = 5,
+        Flag = "CrosshairGap",
+        Callback = function(Value) CrosshairSettings.Gap = Value end
+    })
+
+    VisualTab:CreateSlider({
+        Name = "Толщина прицела",
+        Range = {1, 10},
+        Increment = 1,
+        CurrentValue = 2,
+        Flag = "CrosshairThickness",
+        Callback = function(Value) CrosshairSettings.Thickness = Value end
+    })
+
+    VisualTab:CreateToggle({
+        Name = "Изменять угол обзора (FOV)",
+        CurrentValue = false,
+        Flag = "FOVToggle",
+        Callback = function(Value)
+            FOVSettings.Enabled = Value
+            if not Value then 
+                Camera.FieldOfView = 70
+            end
+        end
+    })
+
+    VisualTab:CreateSlider({
+        Name = "Значение FOV",
+        Range = {30, 120},
+        Increment = 1,
+        CurrentValue = 70,
+        Flag = "FOVValue",
+        Callback = function(Value)
+            FOVSettings.Value = Value
+        end
+    })
+
+    VisualTab:CreateToggle({
+        Name = "Кинематографичные шейдеры",
+        CurrentValue = false,
+        Flag = "ShadersToggle",
+        Callback = function(Value)
+            if Value then
+                ShadersFolder.Parent = Lighting
+            end
+        end
+    })
+
+    VisualTab:CreateSection("Custom World (Настройка мира)")
+
+    VisualTab:CreateToggle({
+        Name = "Кастомный мир (Custom World)",
+        CurrentValue = false,
+        Flag = "CustomWorldToggle",
+        Callback = function(Value)
+            CustomWorldSettings.Enabled = Value
+            applyCustomWorld()
+        end
+    })
+
+    VisualTab:CreateColorPicker({
+        Name = "Цвет мира",
+        Color = Color3.fromRGB(255, 255, 255),
+        Flag = "CustomWorldColor",
+        Callback = function(Value)
+            CustomWorldSettings.Color = Value
+            if CustomWorldSettings.Enabled then applyCustomWorld() end
+        end
+    })
+
+    VisualTab:CreateSlider({
+        Name = "Сила тона (Интенсивность)",
+        Range = {0, 100},
+        Increment = 1,
+        CurrentValue = 50,
+        Flag = "CustomWorldStrength",
+        Callback = function(Value)
+            CustomWorldSettings.Strength = Value / 100
+            if CustomWorldSettings.Enabled then applyCustomWorld() end
+        end
+    })
+
+    VisualTab:CreateSlider({
+        Name = "Прозрачность стен",
+        Range = {0, 100},
+        Increment = 1,
+        CurrentValue = 0,
+        Flag = "CustomWorldTransparency",
+        Callback = function(Value)
+            CustomWorldSettings.Transparency = Value / 100
+            if CustomWorldSettings.Enabled then applyCustomWorld() end
+        end
+    })
+
+    VisualTab:CreateToggle({
+        Name = "Включить туман",
+        CurrentValue = false,
+        Flag = "CustomWorldFogToggle",
+        Callback = function(Value)
+            CustomWorldSettings.FogEnabled = Value
+            if CustomWorldSettings.Enabled then applyCustomWorld() end
+        end
+    })
+
+    VisualTab:CreateSlider({
+        Name = "Дальность тумана",
+        Range = {100, 5000},
+        Increment = 50,
+        CurrentValue = 1000,
+        Flag = "CustomWorldFogEnd",
+        Callback = function(Value)
+            CustomWorldSettings.FogEnd = Value
+            if CustomWorldSettings.Enabled then applyCustomWorld() end
+        end
+    })
+
+    VisualTab:CreateSection("Custom Atmosphere (Кастомная атмосфера)")
+
+    VisualTab:CreateToggle({
+        Name = "Включить атмосферу",
+        CurrentValue = false,
+        Flag = "AtmosphereToggle",
+        Callback = function(Value)
+            AtmosphereSettings.Enabled = Value
+            applyCustomAtmosphere()
+        end
+    })
+
+    VisualTab:CreateSlider({
+        Name = "Плотность тумана (Density)",
+        Range = {0, 100},
+        Increment = 1,
+        CurrentValue = 35,
+        Flag = "AtmosphereDensity",
+        Callback = function(Value)
+            AtmosphereSettings.Density = Value / 100
+            if AtmosphereSettings.Enabled then applyCustomAtmosphere() end
+        end
+    })
+
+    VisualTab:CreateSlider({
+        Name = "Интенсивность дымки (Haze)",
+        Range = {0, 500},
+        Increment = 5,
+        CurrentValue = 20,
+        Flag = "AtmosphereHaze",
+        Callback = function(Value)
+            AtmosphereSettings.Haze = Value / 10
+            if AtmosphereSettings.Enabled then applyCustomAtmosphere() end
+        end
+    })
+
+    VisualTab:CreateSlider({
+        Name = "Влияние света на темноту",
+        Range = {0, 100},
+        Increment = 1,
+        CurrentValue = 100,
+        Flag = "AtmosphereLightInfluence",
+        Callback = function(Value)
+            AtmosphereSettings.LightInfluence = Value
+            if AtmosphereSettings.Enabled then
+                applyLightInfluence()
+            end
+        end
+    })
+
+    VisualTab:CreateToggle({
+        Name = "Кинематографичная тьма (Dark World)",
+        CurrentValue = true,
+        Flag = "AtmosphereDarkToggle",
+        Callback = function(Value)
+            AtmosphereSettings.DarkLighting = Value
+            if AtmosphereSettings.Enabled then applyCustomAtmosphere() end
+        end
+    })
+
+    VisualTab:CreateSlider({
+        Name = "Затемнение экспозиции (Exposure)",
+        Range = {-100, 20},
+        Increment = 1,
+        CurrentValue = -12,
+        Flag = "AtmosphereExposure",
+        Callback = function(Value)
+            AtmosphereSettings.Exposure = Value / 10
+            if AtmosphereSettings.Enabled and AtmosphereSettings.DarkLighting then applyCustomAtmosphere() end
+        end
+    })
+
+    VisualTab:CreateSection("Peak Assistant (Помощник пиков)")
+
+    VisualTab:CreateToggle({
+        Name = "Peak Assistant (Углы)",
+        CurrentValue = false,
+        Flag = "PeakAssistantToggle",
+        Callback = function(Value)
+            PeakSettings.Enabled = Value
+            if not Value then PeakMarker.Parent = nil end
+        end
+    })
+
+    VisualTab:CreateSection("Custom Gun (Кастомный пистолет)")
+
+    VisualTab:CreateToggle({
+        Name = "Кастомный пистолет (только у тебя)",
+        CurrentValue = false,
+        Flag = "CustomGunToggle",
+        Callback = function(Value)
+            GunSettings.Enabled = Value
+            if not Value then
+                clearCustomGun()
+            else
+                local gun = getLocalGun()
+                local handle = gun and (gun:FindFirstChild("Handle") or gun:FindFirstChildWhichIsA("BasePart"))
+                if handle then
+                    destroyGunParts()
+                    buildCustomGun(handle)
+                    GunModelHandle = handle
+                    GunModelStyle = GunSettings.Style
+                    applyGunAppearance()
+                end
+            end
+        end
+    })
+
+    VisualTab:CreateDropdown({
+        Name = "Модель оружия",
+        Options = {"Снайперка", "Пистолет", "Мини-ган", "Ванильный"},
+        CurrentOption = "Снайперка",
+        Flag = "CustomGunStyle",
+        Callback = function(Value)
+            if type(Value) == "table" then Value = Value[1] end
+            if Value then
+                GunSettings.Style = Value
+                if GunSettings.Enabled and GunModelHandle then
+                    destroyGunParts()
+                    buildCustomGun(GunModelHandle)
+                    GunModelStyle = GunSettings.Style
+                    applyGunAppearance()
+                end
+            end
+        end
+    })
+
+    VisualTab:CreateToggle({
+        Name = "Скрыть оригинальный пистолет",
+        CurrentValue = true,
+        Flag = "CustomGunHideOriginal",
+        Callback = function(Value)
+            GunSettings.HideOriginal = Value
+            if not Value then
+                restoreGunVisibility()
+            end
+        end
+    })
+
+    VisualTab:CreateToggle({
+        Name = "Партиклы (Muzzle Flash)",
+        CurrentValue = true,
+        Flag = "CustomGunParticles",
+        Callback = function(Value)
+            GunSettings.Particles = Value
+            applyGunAppearance()
+        end
+    })
+
+    VisualTab:CreateSlider({
+        Name = "Размер оружия",
+        Range = {0.5, 2.5},
+        Increment = 0.1,
+        CurrentValue = 1,
+        Flag = "CustomGunScale",
+        Callback = function(Value)
+            GunSettings.Scale = Value
+            if GunSettings.Enabled and GunModelHandle then
+                destroyGunParts()
+                buildCustomGun(GunModelHandle)
+                applyGunAppearance()
+            end
+        end
+    })
+
+    VisualTab:CreateColorPicker({
+        Name = "Цвет оружия",
+        Color = Color3.fromRGB(138, 43, 226),
+        Flag = "CustomGunColor",
+        Callback = function(Value)
+            GunSettings.Color = Value
+            applyGunAppearance()
+        end
+    })
+
+    VisualTab:CreateSection("Bullet Tracers (Трассеры пуль)")
+
+    VisualTab:CreateToggle({
+        Name = "Включить Bullet Tracers",
+        CurrentValue = false,
+        Flag = "BulletTracersToggle",
+        Callback = function(Value)
+            TracerSettings.Enabled = Value
+            if not Value then
+                for _, obj in ipairs(TracersFolder:GetChildren()) do
+                    obj:Destroy()
+                end
+            end
+        end
+    })
+
+    VisualTab:CreateToggle({
+        Name = "Видимость сквозь стены (Wallhack)",
+        CurrentValue = true,
+        Flag = "BulletTracersThroughWalls",
+        Callback = function(Value)
+            TracerSettings.ThroughWalls = Value
+        end
+    })
+
+    VisualTab:CreateToggle({
+        Name = "Трассеры других игроков",
+        CurrentValue = true,
+        Flag = "BulletTracersOtherPlayers",
+        Callback = function(Value)
+            TracerSettings.OtherPlayers = Value
+        end
+    })
+
+    VisualTab:CreateColorPicker({
+        Name = "Цвет трассеров",
+        Color = Color3.fromRGB(0, 170, 255),
+        Flag = "BulletTracersColor",
+        Callback = function(Value)
+            TracerSettings.Color = Value
+        end
+    })
+
+    VisualTab:CreateSlider({
+        Name = "Длительность (сек)",
+        Range = {1, 10},
+        Increment = 1,
+        CurrentValue = 2,
+        Flag = "BulletTracersDuration",
+        Callback = function(Value)
+            TracerSettings.Duration = Value
+        end
+    })
+
+    VisualTab:CreateSlider({
+        Name = "Толщина луча",
+        Range = {1, 10},
+        Increment = 1,
+        CurrentValue = 2,
+        Flag = "BulletTracersThickness",
+        Callback = function(Value)
+            TracerSettings.Thickness = Value / 10
+        end
+    })
 
     VisualTab:CreateSection("Weapon Chams (Чамсы оружия)")
 
@@ -1831,58 +1994,4 @@ return function(Window)
             WeaponChamsSettings.Transparency = Value / 100
         end
     })
-
-    -- ==========================================
-    -- ЦИКЛ ОБНОВЛЕНИЯ КАСТОМНОГО ОРУЖИЯ
-    -- ==========================================
-    RunService.RenderStepped:Connect(function()
-        if not GunSettings.Enabled then
-            if #GunParts > 0 or next(GunOriginalProperties) ~= nil then clearCustomGun() end
-            return
-        end
-
-        local gun = getLocalGun()
-        local handle = gun and (gun:FindFirstChild("Handle") or gun:FindFirstChildWhichIsA("BasePart"))
-
-        if not handle then
-            if #GunParts > 0 then destroyGunParts() end
-            return
-        end
-
-        if GunSettings.HideOriginal then
-            for _, descendant in ipairs(gun:GetDescendants()) do
-                if descendant:IsA("BasePart") and not descendant.Name:match("XCLIENT") then
-                    if GunOriginalProperties[descendant] == nil then
-                        GunOriginalProperties[descendant] = {
-                            Transparency = descendant.Transparency,
-                            LocalTransparencyModifier = descendant.LocalTransparencyModifier
-                        }
-                    end
-                    descendant.Transparency = 1
-                    descendant.LocalTransparencyModifier = 1
-                elseif descendant:IsA("SpecialMesh") then
-                    if GunOriginalMeshScale[descendant] == nil then
-                        GunOriginalMeshScale[descendant] = descendant.Scale
-                    end
-                    descendant.Scale = Vector3.new(0, 0, 0)
-                end
-            end
-        elseif next(GunOriginalProperties) ~= nil then
-            restoreGunVisibility()
-        end
-
-        if GunModelHandle ~= handle or GunModelStyle ~= GunSettings.Style then
-            destroyGunParts()
-            buildCustomGun(handle)
-            GunModelHandle = handle
-            GunModelStyle = GunSettings.Style
-            applyGunAppearance()
-        end
-
-        for _, part in ipairs(GunParts) do
-            if part and part.Parent then
-                part.LocalTransparencyModifier = 0
-            end
-        end
-    end)
 end
