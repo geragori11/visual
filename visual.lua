@@ -13,7 +13,7 @@ return function(Window)
     local Camera = workspace.CurrentCamera
     
     -- ==========================================
-    -- ВСЕ ТАБЛИЦЫ НАСТРОЕК (В НАЧАЛЕ СКРИПТА)
+    -- ВСЕ ТАБЛИЦЫ НАСТРОЕК
     -- ==========================================
     local HudSettings = {
         Enabled = true,
@@ -289,7 +289,7 @@ return function(Window)
     end)
 
     -- ==========================================
-    -- ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ПОИСКА
+    -- ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ОРУЖИЯ И ИГРОКОВ
     -- ==========================================
     local function getLocalGun()
         local character = LocalPlayer.Character
@@ -532,6 +532,9 @@ return function(Window)
         TracersFolder.Parent = workspace
     end
 
+    local lastKnownTargetPos = nil
+    local lastLocalTracerTime = 0
+
     local function getLocalGunMuzzle()
         if GunSettings.Enabled and GunMuzzle and GunMuzzle.Parent then
             return GunMuzzle.Position
@@ -586,6 +589,7 @@ return function(Window)
 
     local function spawnTracer(startPos, endPos)
         if not TracerSettings.Enabled then return end
+        if not startPos or not endPos then return end
         local distance = (endPos - startPos).Magnitude
         if distance < 0.5 then return end
 
@@ -630,48 +634,122 @@ return function(Window)
         end
 
         Debris:AddItem(tracer, TracerSettings.Duration)
+
+        if GunSettings.Enabled and GunMuzzle and GunSettings.Particles then
+            local emitter = GunMuzzle:FindFirstChildOfClass("ParticleEmitter")
+            if emitter then emitter:Emit(16) end
+            if GunLight then
+                GunLight.Brightness = 8
+                task.delay(0.08, function()
+                    if GunLight then GunLight.Brightness = GunSettings.Particles and 3 or 0 end
+                end)
+            end
+        end
     end
 
-    UserInputService.InputBegan:Connect(function(input, processed)
-        if processed then return end
-        if input.UserInputType ~= Enum.UserInputType.MouseButton1 and input.UserInputType ~= Enum.UserInputType.Touch then return end
-        
-        if GunSettings.Enabled and GunMuzzle then
-            local emitter = GunMuzzle:FindFirstChildOfClass("ParticleEmitter")
-            if emitter and GunSettings.Particles then
-                emitter:Emit(18)
-                if GunLight then
-                    GunLight.Brightness = 8
-                    task.delay(0.08, function()
-                        if GunLight then GunLight.Brightness = GunSettings.Particles and 3 or 0 end
+    -- Перехват сетевых выстрелов (работает как с ручным выстрелом, так и с аимботом)
+    if hookmetamethod then
+        local oldNamecall
+        oldNamecall = hookmetamethod(game, "__namecall", newcclosure(function(self, ...)
+            local method = getnamecallmethod()
+            local args = {...}
+            
+            if method == "FireServer" or method == "fireServer" then
+                local rName = string.lower(tostring(self.Name))
+                local isShootRemote = rName:match("shoot") or rName:match("fire") or rName:match("gun")
+                local isBlacklisted = rName:match("drop") or rName:match("buy") or rName:match("equip") or rName:match("trade") or rName:match("knife")
+                
+                if isShootRemote and not isBlacklisted then
+                    local targetPos = nil
+                    for _, arg in ipairs(args) do
+                        if typeof(arg) == "CFrame" then
+                            targetPos = arg.Position
+                            break
+                        elseif typeof(arg) == "Vector3" then
+                            targetPos = arg
+                            break
+                        end
+                    end
+                    
+                    if targetPos then
+                        lastKnownTargetPos = targetPos
+                    end
+                    
+                    if TracerSettings.Enabled and (tick() - lastLocalTracerTime > 0.1) then
+                        lastLocalTracerTime = tick()
+                        task.spawn(function()
+                            local startPos = getLocalGunMuzzle()
+                            local endPos = targetPos or lastKnownTargetPos or getTargetPositionFromMouse()
+                            if startPos and endPos then
+                                spawnTracer(startPos, endPos)
+                            end
+                        end)
+                    end
+                end
+            end
+            
+            return oldNamecall(self, ...)
+        end))
+    end
+
+    -- Слушатель BindableEvent GunFired (если аимбот или игра использует его)
+    local function hookGunFiredEvent(obj)
+        if obj:IsA("BindableEvent") and (obj.Name == "GunFired" or obj.Name:lower():match("shoot")) then
+            obj.Event:Connect(function(...)
+                local args = {...}
+                local targetPos = nil
+                for _, a in ipairs(args) do
+                    if typeof(a) == "CFrame" then
+                        targetPos = a.Position
+                        break
+                    elseif typeof(a) == "Vector3" then
+                        targetPos = a
+                        break
+                    end
+                end
+                if targetPos then
+                    lastKnownTargetPos = targetPos
+                end
+                if TracerSettings.Enabled and (tick() - lastLocalTracerTime > 0.1) then
+                    lastLocalTracerTime = tick()
+                    task.spawn(function()
+                        local startPos = getLocalGunMuzzle()
+                        local endPos = targetPos or lastKnownTargetPos or getTargetPositionFromMouse()
+                        if startPos and endPos then
+                            spawnTracer(startPos, endPos)
+                        end
                     end)
                 end
-            end
+            end)
         end
+    end
 
-        if TracerSettings.Enabled then
-            local gun = getLocalGun()
-            if gun then
-                local startPos = getLocalGunMuzzle()
-                if startPos then
-                    local endPos = getTargetPositionFromMouse()
-                    spawnTracer(startPos, endPos)
-                end
-            end
-        end
-    end)
+    for _, desc in ipairs(workspace:GetDescendants()) do hookGunFiredEvent(desc) end
+    workspace.DescendantAdded:Connect(hookGunFiredEvent)
 
+    -- Слушатель звуков реальных выстрелов (для себя при аимботе и для других игроков)
     local function monitorWeaponSound(descendant)
         if descendant:IsA("Sound") then
             local name = string.lower(descendant.Name)
-            if name:match("shoot") or name:match("shot") or name:match("fire") or name:match("bang") then
+            local isGunSound = name:match("shoot") or name:match("shot") or name:match("gun") or name:match("fire") or name:match("bang") or descendant.SoundId:match("138084889") or descendant.SoundId:match("2697431")
+            if isGunSound then
                 descendant:GetPropertyChangedSignal("Playing"):Connect(function()
-                    if descendant.Playing and TracerSettings.Enabled and TracerSettings.OtherPlayers then
+                    if descendant.Playing and TracerSettings.Enabled then
                         local parentPart = descendant.Parent
                         if parentPart and parentPart:IsA("BasePart") then
-                            local tool = parentPart:FindFirstAncestorOfClass("Tool")
-                            local char = tool and tool.Parent
-                            if char and char:IsA("Model") and char ~= LocalPlayer.Character then
+                            local char = parentPart:FindFirstAncestorOfClass("Model")
+                            if char == LocalPlayer.Character then
+                                if tick() - lastLocalTracerTime > 0.12 then
+                                    lastLocalTracerTime = tick()
+                                    task.spawn(function()
+                                        local startPos = getLocalGunMuzzle() or parentPart.Position
+                                        local endPos = lastKnownTargetPos or getTargetPositionFromMouse()
+                                        if startPos and endPos then
+                                            spawnTracer(startPos, endPos)
+                                        end
+                                    end)
+                                end
+                            elseif TracerSettings.OtherPlayers and char and char ~= LocalPlayer.Character then
                                 local startPos = parentPart.Position
                                 local forward = parentPart.CFrame.LookVector
                                 local rayParams = RaycastParams.new()
@@ -688,9 +766,7 @@ return function(Window)
         end
     end
 
-    for _, desc in ipairs(workspace:GetDescendants()) do
-        monitorWeaponSound(desc)
-    end
+    for _, desc in ipairs(workspace:GetDescendants()) do monitorWeaponSound(desc) end
     workspace.DescendantAdded:Connect(monitorWeaponSound)
 
     -- ==========================================
@@ -1414,7 +1490,6 @@ return function(Window)
             ExtraText2.Text = "Sheriff: Searching..."
         end
 
-        -- Кастомное оружие
         if not GunSettings.Enabled then
             if #GunParts > 0 or next(GunOriginalProperties) ~= nil then clearCustomGun() end
         else
