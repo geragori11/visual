@@ -13,7 +13,7 @@ return function(Window)
     local Camera = workspace.CurrentCamera
     
     -- ==========================================
-    -- ВСЕ ТАБЛИЦЫ НАСТРОЕК
+    -- ВСЕ ТАБЛИЦЫ НАСТРОЕК (В НАЧАЛЕ СКРИПТА)
     -- ==========================================
     local HudSettings = {
         Enabled = true,
@@ -647,70 +647,100 @@ return function(Window)
         end
     end
 
-    -- Перехват сетевых выстрелов (работает как с ручным выстрелом, так и с аимботом)
+    local function getTargetFromArgs(args)
+        if not args or #args == 0 then return nil end
+
+        local char = LocalPlayer.Character
+        local hrp = char and char:FindFirstChild("HumanoidRootPart")
+        local hrpPos = hrp and hrp.Position
+
+        local candidateTarget = nil
+
+        if #args >= 2 then
+            local a1 = args[1]
+            local a2 = args[2]
+
+            local p2 = (typeof(a2) == "CFrame" and a2.Position) or (typeof(a2) == "Vector3" and a2)
+            local p1 = (typeof(a1) == "CFrame" and a1.Position) or (typeof(a1) == "Vector3" and a1)
+
+            if p2 then
+                candidateTarget = p2
+            elseif p1 then
+                candidateTarget = p1
+            end
+        elseif #args == 1 then
+            local a1 = args[1]
+            candidateTarget = (typeof(a1) == "CFrame" and a1.Position) or (typeof(a1) == "Vector3" and a1)
+        end
+
+        if candidateTarget and hrpPos and (candidateTarget - hrpPos).Magnitude < 4 then
+            for i = 2, #args do
+                local a = args[i]
+                local p = (typeof(a) == "CFrame" and a.Position) or (typeof(a) == "Vector3" and a)
+                if p and (p - hrpPos).Magnitude >= 4 then
+                    return p
+                end
+            end
+        end
+
+        return candidateTarget
+    end
+
+    local function handleShootCall(self, args)
+        local rName = string.lower(tostring(self.Name))
+        local isShootRemote = (rName == "shoot") or (rName:match("shoot") and not rName:match("drop"))
+        local isBlacklisted = rName:match("drop") or rName:match("buy") or rName:match("equip") or rName:match("trade") or rName:match("knife")
+
+        if isShootRemote and not isBlacklisted then
+            local targetPos = getTargetFromArgs(args)
+            if targetPos then
+                lastKnownTargetPos = targetPos
+            end
+
+            if TracerSettings.Enabled and (tick() - lastLocalTracerTime > 0.08) then
+                lastLocalTracerTime = tick()
+                task.spawn(function()
+                    local startPos = getLocalGunMuzzle()
+                    local endPos = targetPos or lastKnownTargetPos or getTargetPositionFromMouse()
+                    if startPos and endPos then
+                        spawnTracer(startPos, endPos)
+                    end
+                end)
+            end
+        end
+    end
+
     if hookmetamethod then
         local oldNamecall
         oldNamecall = hookmetamethod(game, "__namecall", newcclosure(function(self, ...)
             local method = getnamecallmethod()
             local args = {...}
-            
+
             if method == "FireServer" or method == "fireServer" then
-                local rName = string.lower(tostring(self.Name))
-                local isShootRemote = rName:match("shoot") or rName:match("fire") or rName:match("gun")
-                local isBlacklisted = rName:match("drop") or rName:match("buy") or rName:match("equip") or rName:match("trade") or rName:match("knife")
-                
-                if isShootRemote and not isBlacklisted then
-                    local targetPos = nil
-                    for _, arg in ipairs(args) do
-                        if typeof(arg) == "CFrame" then
-                            targetPos = arg.Position
-                            break
-                        elseif typeof(arg) == "Vector3" then
-                            targetPos = arg
-                            break
-                        end
-                    end
-                    
-                    if targetPos then
-                        lastKnownTargetPos = targetPos
-                    end
-                    
-                    if TracerSettings.Enabled and (tick() - lastLocalTracerTime > 0.1) then
-                        lastLocalTracerTime = tick()
-                        task.spawn(function()
-                            local startPos = getLocalGunMuzzle()
-                            local endPos = targetPos or lastKnownTargetPos or getTargetPositionFromMouse()
-                            if startPos and endPos then
-                                spawnTracer(startPos, endPos)
-                            end
-                        end)
-                    end
-                end
+                handleShootCall(self, args)
             end
-            
+
             return oldNamecall(self, ...)
         end))
     end
 
-    -- Слушатель BindableEvent GunFired (если аимбот или игра использует его)
+    if hookfunction then
+        local oldFireServer
+        oldFireServer = hookfunction(Instance.new("RemoteEvent").FireServer, newcclosure(function(self, ...)
+            handleShootCall(self, {...})
+            return oldFireServer(self, ...)
+        end))
+    end
+
     local function hookGunFiredEvent(obj)
         if obj:IsA("BindableEvent") and (obj.Name == "GunFired" or obj.Name:lower():match("shoot")) then
             obj.Event:Connect(function(...)
                 local args = {...}
-                local targetPos = nil
-                for _, a in ipairs(args) do
-                    if typeof(a) == "CFrame" then
-                        targetPos = a.Position
-                        break
-                    elseif typeof(a) == "Vector3" then
-                        targetPos = a
-                        break
-                    end
-                end
+                local targetPos = getTargetFromArgs(args)
                 if targetPos then
                     lastKnownTargetPos = targetPos
                 end
-                if TracerSettings.Enabled and (tick() - lastLocalTracerTime > 0.1) then
+                if TracerSettings.Enabled and (tick() - lastLocalTracerTime > 0.08) then
                     lastLocalTracerTime = tick()
                     task.spawn(function()
                         local startPos = getLocalGunMuzzle()
@@ -727,7 +757,6 @@ return function(Window)
     for _, desc in ipairs(workspace:GetDescendants()) do hookGunFiredEvent(desc) end
     workspace.DescendantAdded:Connect(hookGunFiredEvent)
 
-    -- Слушатель звуков реальных выстрелов (для себя при аимботе и для других игроков)
     local function monitorWeaponSound(descendant)
         if descendant:IsA("Sound") then
             local name = string.lower(descendant.Name)
@@ -739,7 +768,7 @@ return function(Window)
                         if parentPart and parentPart:IsA("BasePart") then
                             local char = parentPart:FindFirstAncestorOfClass("Model")
                             if char == LocalPlayer.Character then
-                                if tick() - lastLocalTracerTime > 0.12 then
+                                if tick() - lastLocalTracerTime > 0.15 then
                                     lastLocalTracerTime = tick()
                                     task.spawn(function()
                                         local startPos = getLocalGunMuzzle() or parentPart.Position
