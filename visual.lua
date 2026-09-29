@@ -603,8 +603,8 @@ return function(Window)
         Offset = 0.25,
         DarkLighting = true,
         ClockTime = 0,
-        Brightness = 0.5,
-        Exposure = -0.5
+        Brightness = 0.4,
+        Exposure = -1.2
     }
 
     local CustomAtmosphere = nil
@@ -647,15 +647,15 @@ return function(Window)
             CustomAtmosphere.Parent = Lighting
         end
 
-        CustomAtmosphere.Color = AtmosphereSettings.Color
-        CustomAtmosphere.Decay = AtmosphereSettings.Decay
+        CustomAtmosphere.Color = Color3.fromRGB(0, 0, 0)
+        CustomAtmosphere.Decay = Color3.fromRGB(0, 0, 0)
         CustomAtmosphere.Density = AtmosphereSettings.Density
         CustomAtmosphere.Haze = AtmosphereSettings.Haze
         CustomAtmosphere.Glare = AtmosphereSettings.Glare
         CustomAtmosphere.Offset = AtmosphereSettings.Offset
 
         if AtmosphereSettings.DarkLighting then
-            Lighting.ClockTime = AtmosphereSettings.ClockTime
+            Lighting.ClockTime = 0
             Lighting.Brightness = AtmosphereSettings.Brightness
             Lighting.ExposureCompensation = AtmosphereSettings.Exposure
         else
@@ -677,26 +677,6 @@ return function(Window)
         end
     })
 
-    VisualTab:CreateColorPicker({
-        Name = "Цвет атмосферы (По умолч. Черный)",
-        Color = Color3.fromRGB(0, 0, 0),
-        Flag = "AtmosphereColor",
-        Callback = function(Value)
-            AtmosphereSettings.Color = Value
-            if AtmosphereSettings.Enabled then applyCustomAtmosphere() end
-        end
-    })
-
-    VisualTab:CreateColorPicker({
-        Name = "Цвет рассеивания (Decay)",
-        Color = Color3.fromRGB(0, 0, 0),
-        Flag = "AtmosphereDecayColor",
-        Callback = function(Value)
-            AtmosphereSettings.Decay = Value
-            if AtmosphereSettings.Enabled then applyCustomAtmosphere() end
-        end
-    })
-
     VisualTab:CreateSlider({
         Name = "Плотность тумана (Density)",
         Range = {0, 100},
@@ -711,8 +691,8 @@ return function(Window)
 
     VisualTab:CreateSlider({
         Name = "Интенсивность дымки (Haze)",
-        Range = {0, 100},
-        Increment = 1,
+        Range = {0, 500},
+        Increment = 5,
         CurrentValue = 20,
         Flag = "AtmosphereHaze",
         Callback = function(Value)
@@ -732,22 +712,10 @@ return function(Window)
     })
 
     VisualTab:CreateSlider({
-        Name = "Время суток (ClockTime)",
-        Range = {0, 24},
+        Name = "Затемнение экспозиции (Exposure)",
+        Range = {-100, 20},
         Increment = 1,
-        CurrentValue = 0,
-        Flag = "AtmosphereClockTime",
-        Callback = function(Value)
-            AtmosphereSettings.ClockTime = Value
-            if AtmosphereSettings.Enabled and AtmosphereSettings.DarkLighting then applyCustomAtmosphere() end
-        end
-    })
-
-    VisualTab:CreateSlider({
-        Name = "Затемнение экспозиции",
-        Range = {-30, 20},
-        Increment = 1,
-        CurrentValue = -5,
+        CurrentValue = -12,
         Flag = "AtmosphereExposure",
         Callback = function(Value)
             AtmosphereSettings.Exposure = Value / 10
@@ -1358,17 +1326,23 @@ return function(Window)
         TargetScope = "Все (Я и другие)",
         Style = "Сплошной (Без текстуры)",
         ThroughWalls = true,
-        Color = Color3.fromRGB(255, 35, 90),
+        Color = Color3.fromRGB(255, 45, 110),
         OutlineColor = Color3.fromRGB(255, 255, 255),
-        Transparency = 0.35
+        Transparency = 0.2
     }
 
     local ChammedParts = {}
     local ChammedHighlights = {}
+    local ChammedLights = {}
     local ChammedMeshTextures = {}
     local ChammedMeshPartTextures = {}
     local ChammedDecalTransparencies = {}
     local ChammedSurfaceAppearances = {}
+
+    local function getVibrantColor(baseColor)
+        local h, s, v = baseColor:ToHSV()
+        return Color3.fromHSV(h, math.clamp(s * 0.9, 0, 1), math.min(v * 1.25, 1))
+    end
 
     local function restoreWeaponTextures()
         for mesh, texId in pairs(ChammedMeshTextures) do
@@ -1421,6 +1395,13 @@ return function(Window)
             end
         end
         table.clear(ChammedHighlights)
+
+        for part, light in pairs(ChammedLights) do
+            if light and light.Parent then
+                light:Destroy()
+            end
+        end
+        table.clear(ChammedLights)
     end
 
     local function getActiveWeapons()
@@ -1472,7 +1453,7 @@ return function(Window)
 
     local function updateWeaponChams()
         if not WeaponChamsSettings.Enabled then
-            if next(ChammedParts) ~= nil or next(ChammedHighlights) ~= nil or next(ChammedMeshTextures) ~= nil then
+            if next(ChammedParts) ~= nil or next(ChammedHighlights) ~= nil or next(ChammedMeshTextures) ~= nil or next(ChammedLights) ~= nil then
                 restoreWeaponChams()
             end
             return
@@ -1481,6 +1462,7 @@ return function(Window)
         local activeWeapons = getActiveWeapons()
         local activeWeaponSet = {}
         local activePartSet = {}
+        local brightColor = getVibrantColor(WeaponChamsSettings.Color)
 
         for _, weapon in ipairs(activeWeapons) do
             activeWeaponSet[weapon] = true
@@ -1494,23 +1476,23 @@ return function(Window)
             end
 
             hl.Adornee = weapon
-            hl.FillColor = WeaponChamsSettings.Color
+            hl.FillColor = brightColor
             hl.OutlineColor = WeaponChamsSettings.OutlineColor
             hl.DepthMode = WeaponChamsSettings.ThroughWalls and Enum.HighlightDepthMode.AlwaysOnTop or Enum.HighlightDepthMode.Occluded
 
             local isSolid = (WeaponChamsSettings.Style == "Сплошной (Без текстуры)")
 
             if isSolid then
-                hl.FillTransparency = WeaponChamsSettings.ThroughWalls and 0 or 1
-                hl.OutlineTransparency = WeaponChamsSettings.ThroughWalls and 0 or 1
+                hl.FillTransparency = 0
+                hl.OutlineTransparency = 0
                 hl.Enabled = true
             elseif WeaponChamsSettings.Style == "Highlight" then
                 hl.FillTransparency = WeaponChamsSettings.Transparency
                 hl.OutlineTransparency = 0
                 hl.Enabled = true
             else
-                hl.FillTransparency = WeaponChamsSettings.ThroughWalls and math.clamp(WeaponChamsSettings.Transparency + 0.35, 0.45, 0.9) or 1
-                hl.OutlineTransparency = WeaponChamsSettings.ThroughWalls and 0 or 0.35
+                hl.FillTransparency = math.clamp(WeaponChamsSettings.Transparency * 0.7, 0, 0.75)
+                hl.OutlineTransparency = 0
                 hl.Enabled = true
             end
 
@@ -1527,14 +1509,26 @@ return function(Window)
                         }
                     end
 
+                    local partLight = ChammedLights[descendant]
+                    if not partLight or partLight.Parent ~= descendant then
+                        partLight = Instance.new("PointLight")
+                        partLight.Name = "XCLIENT_ChamsLight"
+                        partLight.Range = 8
+                        partLight.Shadows = false
+                        partLight.Parent = descendant
+                        ChammedLights[descendant] = partLight
+                    end
+                    partLight.Color = brightColor
+                    partLight.Brightness = 2.5
+                    partLight.Enabled = true
+
                     local style = WeaponChamsSettings.Style
-                    local col = WeaponChamsSettings.Color
                     local tr = WeaponChamsSettings.Transparency
 
                     if isSolid then
                         pcall(function()
-                            descendant.Material = Enum.Material.SmoothPlastic
-                            descendant.Color = col
+                            descendant.Material = Enum.Material.Neon
+                            descendant.Color = brightColor
                             descendant.Transparency = 0
                             descendant.Reflectance = 0
 
@@ -1568,24 +1562,24 @@ return function(Window)
                         pcall(function()
                             if style == "Стекло" then
                                 descendant.Material = Enum.Material.Glass
-                                descendant.Color = col
-                                descendant.Transparency = math.clamp(tr, 0.15, 0.92)
-                                descendant.Reflectance = 0.5
+                                descendant.Color = brightColor
+                                descendant.Transparency = math.clamp(tr, 0.1, 0.85)
+                                descendant.Reflectance = 0.6
                             elseif style == "Неон" then
                                 descendant.Material = Enum.Material.Neon
-                                descendant.Color = col
+                                descendant.Color = brightColor
                                 descendant.Transparency = tr
                                 descendant.Reflectance = 0
                             elseif style == "Силовое поле" then
                                 descendant.Material = Enum.Material.ForceField
-                                descendant.Color = col
+                                descendant.Color = brightColor
                                 descendant.Transparency = tr
                                 descendant.Reflectance = 0
                             elseif style == "Глянец" then
                                 descendant.Material = Enum.Material.SmoothPlastic
-                                descendant.Color = col
+                                descendant.Color = brightColor
                                 descendant.Transparency = tr
-                                descendant.Reflectance = 0.8
+                                descendant.Reflectance = 0.9
                             end
                         end)
                     end
@@ -1597,6 +1591,13 @@ return function(Window)
             if not activeWeaponSet[weapon] or not weapon.Parent then
                 if hl and hl.Parent then hl:Destroy() end
                 ChammedHighlights[weapon] = nil
+            end
+        end
+
+        for part, light in pairs(ChammedLights) do
+            if not activePartSet[part] or not part.Parent then
+                if light and light.Parent then light:Destroy() end
+                ChammedLights[part] = nil
             end
         end
 
@@ -1686,7 +1687,7 @@ return function(Window)
 
     VisualTab:CreateColorPicker({
         Name = "Цвет чамсов оружия",
-        Color = Color3.fromRGB(255, 35, 90),
+        Color = Color3.fromRGB(255, 45, 110),
         Flag = "WeaponChamsColor",
         Callback = function(Value)
             WeaponChamsSettings.Color = Value
@@ -1706,7 +1707,7 @@ return function(Window)
         Name = "Прозрачность чамсов",
         Range = {0, 100},
         Increment = 5,
-        CurrentValue = 35,
+        CurrentValue = 20,
         Flag = "WeaponChamsTransparency",
         Callback = function(Value)
             WeaponChamsSettings.Transparency = Value / 100
