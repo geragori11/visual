@@ -21,6 +21,12 @@ return function(Window)
         RGBSpeed = 3
     }
 
+    local NewRenderSettings = {
+        Enabled = false,
+        TexturePreset = "Гексагоны (Hex)",
+        CustomTextureId = "rbxassetid://4907409252"
+    }
+
     local HatSettings = {
         Enabled = false,
         Color = Color3.fromRGB(60, 255, 150)
@@ -111,11 +117,9 @@ return function(Window)
 
     local CustomDeathSettings = {
         Enabled = false,
-        Mode = "Ghost (Призрак)",
         Scope = "Только я",
         Color = Color3.fromRGB(138, 43, 226),
-        Duration = 5,
-        PointSize = 0.18
+        Duration = 5
     }
 
     -- ==========================================
@@ -414,7 +418,7 @@ return function(Window)
         part.Name = "XCLIENT_" .. name
         part.Size = size * GunSettings.Scale
         part.Color = GunSettings.Color
-        part.Material = material or Enum.Material.Metal
+        part.Material = NewRenderSettings.Enabled and Enum.Material.ForceField or (material or Enum.Material.Metal)
         part.Anchored = false
         part.CanCollide = false
         part.Massless = true
@@ -523,6 +527,9 @@ return function(Window)
     local function applyGunAppearance()
         for _, part in ipairs(GunParts) do
             part.Color = GunSettings.Color
+            if NewRenderSettings.Enabled then
+                part.Material = Enum.Material.ForceField
+            end
             local base = part:GetAttribute("BaseSize")
             if base then part.Size = base * GunSettings.Scale end
         end
@@ -1122,7 +1129,7 @@ return function(Window)
                     end
                     descendant.LightInfluence = 0
                 elseif descendant:IsA("BasePart") and descendant.Material == Enum.Material.Neon then
-                    if not NeonLightSources[descendant] and not descendant:FindFirstChildOfClass("PointLight") then
+                    if not NeonLightSources[descendant] and not desc:FindFirstChildOfClass("PointLight") then
                         local pLight = Instance.new("PointLight")
                         pLight.Name = "XCLIENT_NeonLight"
                         pLight.Color = descendant.Color
@@ -1395,7 +1402,11 @@ return function(Window)
 
             local isSolid = (WeaponChamsSettings.Style == "Сплошной (Без текстуры)")
 
-            if isSolid then
+            if NewRenderSettings.Enabled then
+                hl.FillTransparency = math.clamp(WeaponChamsSettings.Transparency, 0.2, 0.7)
+                hl.OutlineTransparency = 0
+                hl.Enabled = true
+            elseif isSolid then
                 hl.FillTransparency = 0
                 hl.OutlineTransparency = 0
                 hl.Enabled = true
@@ -1438,7 +1449,41 @@ return function(Window)
                     local style = WeaponChamsSettings.Style
                     local tr = WeaponChamsSettings.Transparency
 
-                    if isSolid then
+                    if NewRenderSettings.Enabled then
+                        pcall(function()
+                            descendant.Material = Enum.Material.ForceField
+                            descendant.Color = brightColor
+                            descendant.Transparency = math.clamp(tr, 0.1, 0.6)
+                            descendant.Reflectance = 0
+
+                            local texId = NewRenderSettings.CustomTextureId
+                            if descendant:IsA("MeshPart") then
+                                if ChammedMeshPartTextures[descendant] == nil then
+                                    ChammedMeshPartTextures[descendant] = descendant.TextureID
+                                end
+                                descendant.TextureID = texId
+                            end
+
+                            for _, child in ipairs(descendant:GetChildren()) do
+                                if child:IsA("SpecialMesh") then
+                                    if ChammedMeshTextures[child] == nil then
+                                        ChammedMeshTextures[child] = child.TextureId
+                                    end
+                                    child.TextureId = texId
+                                elseif child:IsA("Decal") or child:IsA("Texture") then
+                                    if ChammedDecalTransparencies[child] == nil then
+                                        ChammedDecalTransparencies[child] = child.Transparency
+                                    end
+                                    child.Transparency = 1
+                                elseif child:IsA("SurfaceAppearance") then
+                                    if ChammedSurfaceAppearances[child] == nil then
+                                        ChammedSurfaceAppearances[child] = child.Parent
+                                    end
+                                    child.Parent = nil
+                                end
+                            end
+                        end)
+                    elseif isSolid then
                         pcall(function()
                             descendant.Material = Enum.Material.Neon
                             descendant.Color = brightColor
@@ -1573,7 +1618,7 @@ return function(Window)
     end
 
     -- ==========================================
-    -- CUSTOM DEATH СИСТЕМА (GHOST & ТОЧКИ)
+    -- CUSTOM DEATH СИСТЕМА (GHOST ПРИЗРАК)
     -- ==========================================
     local DeathEffectsFolder = workspace:FindFirstChild("XCLIENT_DeathEffects")
     if not DeathEffectsFolder then
@@ -1587,85 +1632,49 @@ return function(Window)
         local hrp = char:FindFirstChild("HumanoidRootPart")
         if not hrp then return end
 
-        local mode = CustomDeathSettings.Mode
+        char.Archivable = true
+        local ghost = char:Clone()
+        char.Archivable = false
 
-        if mode == "Ghost (Призрак)" then
-            char.Archivable = true
-            local ghost = char:Clone()
-            char.Archivable = false
+        if ghost then
+            ghost.Name = "XCLIENT_GhostCorpse"
+            local forcefieldTexture = NewRenderSettings.Enabled and NewRenderSettings.CustomTextureId or ""
 
-            if ghost then
-                ghost.Name = "XCLIENT_GhostCorpse"
-                for _, item in ipairs(ghost:GetDescendants()) do
-                    if item:IsA("Script") or item:IsA("LocalScript") or item:IsA("Sound") or item:IsA("BillboardGui") then
-                        item:Destroy()
-                    elseif item:IsA("BasePart") then
-                        item.Anchored = true
-                        item.CanCollide = false
-                        item.CanTouch = false
-                        item.CanQuery = false
-                        item.CastShadow = false
-                        item.Material = Enum.Material.ForceField
-                        item.Color = CustomDeathSettings.Color
-                        item.Transparency = 0.65
-                    elseif item:IsA("Decal") or item:IsA("Texture") then
-                        item.Transparency = 1
+            for _, item in ipairs(ghost:GetDescendants()) do
+                if item:IsA("Script") or item:IsA("LocalScript") or item:IsA("Sound") or item:IsA("BillboardGui") then
+                    item:Destroy()
+                elseif item:IsA("BasePart") then
+                    item.Anchored = true
+                    item.CanCollide = false
+                    item.CanTouch = false
+                    item.CanQuery = false
+                    item.CastShadow = false
+                    item.Material = Enum.Material.ForceField
+                    item.Color = CustomDeathSettings.Color
+                    item.Transparency = 0.55
+
+                    if item:IsA("MeshPart") and forcefieldTexture ~= "" then
+                        item.TextureID = forcefieldTexture
                     end
-                end
-
-                local hl = Instance.new("Highlight")
-                hl.Name = "GhostHighlight"
-                hl.Adornee = ghost
-                hl.FillColor = CustomDeathSettings.Color
-                hl.OutlineColor = CustomDeathSettings.Color
-                hl.FillTransparency = 0.75
-                hl.OutlineTransparency = 0
-                hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
-                hl.Parent = ghost
-
-                ghost.Parent = DeathEffectsFolder
-                Debris:AddItem(ghost, CustomDeathSettings.Duration)
-            end
-        elseif mode == "Силуэт из точек" then
-            local pointModel = Instance.new("Model")
-            pointModel.Name = "XCLIENT_PointSilhouette"
-
-            for _, part in ipairs(char:GetChildren()) do
-                if part:IsA("BasePart") and part.Transparency < 0.9 and not part.Name:match("XCLIENT") then
-                    local size = part.Size
-                    local cf = part.CFrame
-                    local stepX = math.clamp(size.X / 3, 0.35, 1)
-                    local stepY = math.clamp(size.Y / 3, 0.35, 1)
-                    local stepZ = math.clamp(size.Z / 3, 0.35, 1)
-
-                    local halfX = size.X / 2
-                    local halfY = size.Y / 2
-                    local halfZ = size.Z / 2
-
-                    for x = -halfX + (stepX / 2), halfX, stepX do
-                        for y = -halfY + (stepY / 2), halfY, stepY do
-                            for z = -halfZ + (stepZ / 2), halfZ, stepZ do
-                                local dot = Instance.new("Part")
-                                dot.Name = "Point"
-                                dot.Shape = Enum.PartType.Ball
-                                dot.Size = Vector3.new(CustomDeathSettings.PointSize, CustomDeathSettings.PointSize, CustomDeathSettings.PointSize)
-                                dot.Color = CustomDeathSettings.Color
-                                dot.Material = Enum.Material.Neon
-                                dot.Anchored = true
-                                dot.CanCollide = false
-                                dot.CanTouch = false
-                                dot.CanQuery = false
-                                dot.CastShadow = false
-                                dot.CFrame = cf * CFrame.new(x, y, z)
-                                dot.Parent = pointModel
-                            end
-                        end
-                    end
+                elseif item:IsA("SpecialMesh") and forcefieldTexture ~= "" then
+                    item.TextureId = forcefieldTexture
+                elseif item:IsA("Decal") or item:IsA("Texture") then
+                    item.Transparency = 1
                 end
             end
 
-            pointModel.Parent = DeathEffectsFolder
-            Debris:AddItem(pointModel, CustomDeathSettings.Duration)
+            local hl = Instance.new("Highlight")
+            hl.Name = "GhostHighlight"
+            hl.Adornee = ghost
+            hl.FillColor = CustomDeathSettings.Color
+            hl.OutlineColor = CustomDeathSettings.Color
+            hl.FillTransparency = 0.7
+            hl.OutlineTransparency = 0
+            hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+            hl.Parent = ghost
+
+            ghost.Parent = DeathEffectsFolder
+            Debris:AddItem(ghost, CustomDeathSettings.Duration)
         end
     end
 
@@ -1778,6 +1787,7 @@ return function(Window)
             if Character and Character:FindFirstChild("Head") and Character:FindFirstChild("Humanoid") and Character.Humanoid.Health > 0 then
                 ChinaHat.Parent = workspace
                 ChinaHat.CFrame = Character.Head.CFrame * CFrame.new(0, 0.8, 0)
+                ChinaHat.Material = NewRenderSettings.Enabled and Enum.Material.ForceField or Enum.Material.Neon
             else
                 ChinaHat.Parent = nil
             end
@@ -1877,6 +1887,51 @@ return function(Window)
     -- ==========================================
     -- ЭЛЕМЕНТЫ UI
     -- ==========================================
+    VisualTab:CreateSection("New Render Engine (ForceField)")
+
+    VisualTab:CreateToggle({
+        Name = "New Render (ForceField Режим)",
+        CurrentValue = false,
+        Flag = "NewRenderToggle",
+        Callback = function(Value)
+            NewRenderSettings.Enabled = Value
+            if GunSettings.Enabled and GunModelHandle then
+                applyGunAppearance()
+            end
+            if HatSettings.Enabled and ChinaHat then
+                ChinaHat.Material = Value and Enum.Material.ForceField or Enum.Material.Neon
+            end
+            if WeaponChamsSettings.Enabled then
+                updateWeaponChams()
+            end
+        end
+    })
+
+    VisualTab:CreateDropdown({
+        Name = "Текстура ForceField",
+        Options = {"Гексагоны (Hex)", "Кибер-сетка", "Без текстуры (Чистый Fresnel)"},
+        CurrentOption = "Гексагоны (Hex)",
+        Flag = "NewRenderTexturePreset",
+        Callback = function(Value)
+            if type(Value) == "table" then Value = Value[1] end
+            if Value then
+                NewRenderSettings.TexturePreset = Value
+                if Value == "Гексагоны (Hex)" then
+                    NewRenderSettings.CustomTextureId = "rbxassetid://4907409252"
+                elseif Value == "Кибер-сетка" then
+                    NewRenderSettings.CustomTextureId = "rbxassetid://6022359431"
+                elseif Value == "Без текстуры (Чистый Fresnel)" then
+                    NewRenderSettings.CustomTextureId = ""
+                end
+                if WeaponChamsSettings.Enabled then
+                    updateWeaponChams()
+                end
+            end
+        end
+    })
+
+    VisualTab:CreateSection("HUD & Interface")
+
     VisualTab:CreateToggle({
         Name = "Отображать HUD",
         CurrentValue = true,
@@ -2199,25 +2254,14 @@ return function(Window)
         end
     })
 
-    VisualTab:CreateSection("Custom Death Effects (Эффекты смерти)")
+    VisualTab:CreateSection("Custom Death Effects (Эффект смерти Ghost)")
 
     VisualTab:CreateToggle({
-        Name = "Включить Custom Death",
+        Name = "Включить Custom Death (Ghost)",
         CurrentValue = false,
         Flag = "CustomDeathToggle",
         Callback = function(Value)
             CustomDeathSettings.Enabled = Value
-        end
-    })
-
-    VisualTab:CreateDropdown({
-        Name = "Режим смерти",
-        Options = {"Ghost (Призрак)", "Силуэт из точек"},
-        CurrentOption = "Ghost (Призрак)",
-        Flag = "CustomDeathMode",
-        Callback = function(Value)
-            if type(Value) == "table" then Value = Value[1] end
-            if Value then CustomDeathSettings.Mode = Value end
         end
     })
 
@@ -2233,7 +2277,7 @@ return function(Window)
     })
 
     VisualTab:CreateColorPicker({
-        Name = "Цвет эффекта смерти",
+        Name = "Цвет призрака",
         Color = Color3.fromRGB(138, 43, 226),
         Flag = "CustomDeathColor",
         Callback = function(Value)
@@ -2249,17 +2293,6 @@ return function(Window)
         Flag = "CustomDeathDuration",
         Callback = function(Value)
             CustomDeathSettings.Duration = Value
-        end
-    })
-
-    VisualTab:CreateSlider({
-        Name = "Размер точек силуэта",
-        Range = {0.05, 0.6},
-        Increment = 0.01,
-        CurrentValue = 0.18,
-        Flag = "CustomDeathPointSize",
-        Callback = function(Value)
-            CustomDeathSettings.PointSize = Value
         end
     })
 
