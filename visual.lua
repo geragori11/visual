@@ -102,6 +102,38 @@ return function(Window)
     }
 
     -- ==========================================
+    -- ITEMS CHAMS НАСТРОЙКИ
+    -- ==========================================
+    local ItemsChamsSettings = {
+        Enabled      = false,
+        WholeTool    = true,
+        Targets      = {
+            Knife     = true,
+            Gun       = true,
+            Handle    = true,
+            GunDrop   = true,
+            KnifeDrop = true,
+            Coin      = false,
+        },
+        CustomNames  = {},
+        Color        = Color3.fromRGB(255, 200, 0),
+        OutlineColor = Color3.fromRGB(255, 255, 255),
+        ThroughWalls = true,
+        Style        = "Highlight",
+        Transparency = 0.15,
+        LightEnabled = true,
+    }
+
+    local ITEMS_PRESETS = {
+        Knife     = {"Knife", "Нож"},
+        Gun       = {"Gun", "Revolver", "Пистолет"},
+        Handle    = {"Handle"},
+        GunDrop   = {"GunDrop", "Gun Drop"},
+        KnifeDrop = {"KnifeDrop", "Knife Drop"},
+        Coin      = {"Coin", "Монета"},
+    }
+
+    -- ==========================================
     -- HUD (XCLIENT)
     -- ==========================================
     local ScreenGui = Instance.new("ScreenGui")
@@ -1395,6 +1427,207 @@ return function(Window)
     end
 
     -- ==========================================
+    -- ITEMS CHAMS ЛОГИКА
+    -- ==========================================
+    local ItemsChamsData = {}
+
+    local function isMapPart(part)
+        local ancestor = part.Parent
+        while ancestor and ancestor ~= workspace do
+            local n = ancestor.Name
+            if n == "Map" or n == "Structure" or n == "Parts" or n == "Base" or n == "Hotel" then
+                return true
+            end
+            ancestor = ancestor.Parent
+        end
+        return false
+    end
+
+    local function isItemPart(part)
+        if not part:IsA("BasePart") then return false end
+        if part.Name:match("XCLIENT") then return false end
+
+        local tool  = part:FindFirstAncestorOfClass("Tool")
+        local model = part:FindFirstAncestorOfClass("Model")
+
+        -- Если это часть тела персонажа (есть Humanoid-модель),
+        -- пропускаем ТОЛЬКО когда часть не внутри Tool.
+        if model and model:FindFirstChildOfClass("Humanoid") and not tool then
+            return false
+        end
+
+        -- Исключаем структуры карты
+        if isMapPart(part) then return false end
+
+        local nameLower = string.lower(part.Name)
+
+        -- Пресеты (Knife / Gun / Handle / ...)
+        for key, enabled in pairs(ItemsChamsSettings.Targets) do
+            if enabled then
+                local names = ITEMS_PRESETS[key]
+                if names then
+                    for _, n in ipairs(names) do
+                        if nameLower == string.lower(n) then
+                            return true
+                        end
+                    end
+                end
+            end
+        end
+
+        -- Пользовательские имена
+        for _, n in ipairs(ItemsChamsSettings.CustomNames) do
+            if n ~= "" and nameLower == string.lower(n) then
+                return true
+            end
+        end
+
+        return false
+    end
+
+    local function clearItemChams(key)
+        local data = ItemsChamsData[key]
+        if not data then return end
+        if data.Highlight and data.Highlight.Parent then data.Highlight:Destroy() end
+        if data.Light and data.Light.Parent then data.Light:Destroy() end
+        if data.Original then
+            for part, orig in pairs(data.Original) do
+                if part and part.Parent then
+                    pcall(function()
+                        part.Material     = orig.Material
+                        part.Color        = orig.Color
+                        part.Transparency = orig.Transparency
+                    end)
+                end
+            end
+        end
+        ItemsChamsData[key] = nil
+    end
+
+    local function restoreAllItemsChams()
+        for key, _ in pairs(ItemsChamsData) do
+            clearItemChams(key)
+        end
+        table.clear(ItemsChamsData)
+    end
+
+    local function applyItemChams(part)
+        if not ItemsChamsSettings.Enabled then return end
+        if not part or not part.Parent then return end
+
+        -- Если часть внутри Tool и включена опция "подсвечивать всё оружие целиком",
+        -- то цепляем Highlight на Tool.
+        local tool = part:FindFirstAncestorOfClass("Tool")
+        local adornee = (tool and ItemsChamsSettings.WholeTool) and tool or part
+
+        local data = ItemsChamsData[adornee]
+        if not data then
+            data = { Original = {} }
+            data.Highlight = Instance.new("Highlight")
+            data.Highlight.Name = "XCLIENT_ItemHighlight"
+            data.Highlight.Adornee = adornee
+            data.Highlight.Parent = ScreenGui
+
+            ItemsChamsData[adornee] = data
+        end
+
+        local hl = data.Highlight
+        hl.FillColor    = ItemsChamsSettings.Color
+        hl.OutlineColor = ItemsChamsSettings.OutlineColor
+        hl.DepthMode = ItemsChamsSettings.ThroughWalls
+            and Enum.HighlightDepthMode.AlwaysOnTop
+            or  Enum.HighlightDepthMode.Occluded
+
+        local style = ItemsChamsSettings.Style
+        if style == "Сплошной" then
+            hl.FillTransparency = 0
+            hl.OutlineTransparency = 0
+        elseif style == "Outline" then
+            hl.FillTransparency = 1
+            hl.OutlineTransparency = 0
+        elseif style == "Неон" then
+            hl.FillTransparency = ItemsChamsSettings.Transparency
+            hl.OutlineTransparency = 0
+        else -- Highlight
+            hl.FillTransparency = ItemsChamsSettings.Transparency
+            hl.OutlineTransparency = 0
+        end
+        hl.Enabled = true
+
+        -- Свет / перекраска — только на сам part (внутри Tool тоже работает)
+        if ItemsChamsSettings.Style == "Сплошной" or ItemsChamsSettings.Style == "Неон" then
+            if data.Original[part] == nil then
+                data.Original[part] = {
+                    Material     = part.Material,
+                    Color        = part.Color,
+                    Transparency = part.Transparency,
+                }
+            end
+            pcall(function()
+                part.Material     = Enum.Material.Neon
+                part.Color        = ItemsChamsSettings.Color
+                part.Transparency = (ItemsChamsSettings.Style == "Сплошной")
+                                    and 0 or ItemsChamsSettings.Transparency
+            end)
+        end
+
+        if ItemsChamsSettings.LightEnabled then
+            data.Light = data.Light or Instance.new("PointLight")
+            data.Light.Name        = "XCLIENT_ItemLight"
+            data.Light.Range       = 10
+            data.Light.Shadows     = false
+            data.Light.Color       = ItemsChamsSettings.Color
+            data.Light.Brightness  = 2.5
+            if data.Light.Parent ~= part then
+                data.Light.Parent = part
+            end
+        end
+    end
+
+    local function updateItemsChams()
+        if not ItemsChamsSettings.Enabled then
+            if next(ItemsChamsData) ~= nil then restoreAllItemsChams() end
+            return
+        end
+
+        local found = {}
+        for _, obj in ipairs(workspace:GetDescendants()) do
+            if obj:IsA("BasePart") and isItemPart(obj) then
+                local tool = obj:FindFirstAncestorOfClass("Tool")
+                local key  = (tool and ItemsChamsSettings.WholeTool) and tool or obj
+                found[key] = true
+                applyItemChams(obj)
+            end
+        end
+
+        for key, _ in pairs(ItemsChamsData) do
+            if not found[key] or not key.Parent then
+                clearItemChams(key)
+            end
+        end
+    end
+
+    -- Периодическое обновление
+    task.spawn(function()
+        while task.wait(0.3) do
+            if ItemsChamsSettings.Enabled then
+                updateItemsChams()
+            end
+        end
+    end)
+
+    -- Мгновенная реакция на появление нового предмета
+    workspace.DescendantAdded:Connect(function(obj)
+        if not ItemsChamsSettings.Enabled then return end
+        if obj:IsA("BasePart") then
+            task.wait(0.05)
+            if isItemPart(obj) then
+                applyItemChams(obj)
+            end
+        end
+    end)
+
+    -- ==========================================
     -- РЕНДЕР ЦИКЛ И ЛОГИКА
     -- ==========================================
     local hue = 0
@@ -2096,6 +2329,163 @@ return function(Window)
         Flag = "WeaponChamsTransparency",
         Callback = function(Value)
             WeaponChamsSettings.Transparency = Value / 100
+        end
+    })
+
+    VisualTab:CreateSection("Items Chams (Подсветка предметов)")
+
+    VisualTab:CreateToggle({
+        Name = "Включить Items Chams",
+        CurrentValue = false,
+        Flag = "ItemsChamsToggle",
+        Callback = function(Value)
+            ItemsChamsSettings.Enabled = Value
+            if not Value then restoreAllItemsChams() end
+        end
+    })
+
+    VisualTab:CreateToggle({
+        Name = "Подсвечивать инструмент целиком (а не только Handle)",
+        CurrentValue = true,
+        Flag = "ItemsChamsWholeTool",
+        Callback = function(Value)
+            ItemsChamsSettings.WholeTool = Value
+            restoreAllItemsChams()
+        end
+    })
+
+    VisualTab:CreateToggle({
+        Name = "Подсвечивать: Нож",
+        CurrentValue = true,
+        Flag = "ItemsChamsKnife",
+        Callback = function(Value)
+            ItemsChamsSettings.Targets.Knife = Value
+            restoreAllItemsChams()
+        end
+    })
+
+    VisualTab:CreateToggle({
+        Name = "Подсвечивать: Пистолет / Револьвер",
+        CurrentValue = true,
+        Flag = "ItemsChamsGun",
+        Callback = function(Value)
+            ItemsChamsSettings.Targets.Gun = Value
+            restoreAllItemsChams()
+        end
+    })
+
+    VisualTab:CreateToggle({
+        Name = "Подсвечивать: Handle (Выпавшее оружие)",
+        CurrentValue = true,
+        Flag = "ItemsChamsHandle",
+        Callback = function(Value)
+            ItemsChamsSettings.Targets.Handle = Value
+            restoreAllItemsChams()
+        end
+    })
+
+    VisualTab:CreateToggle({
+        Name = "Подсвечивать: GunDrop",
+        CurrentValue = true,
+        Flag = "ItemsChamsGunDrop",
+        Callback = function(Value)
+            ItemsChamsSettings.Targets.GunDrop = Value
+            restoreAllItemsChams()
+        end
+    })
+
+    VisualTab:CreateToggle({
+        Name = "Подсвечивать: KnifeDrop",
+        CurrentValue = true,
+        Flag = "ItemsChamsKnifeDrop",
+        Callback = function(Value)
+            ItemsChamsSettings.Targets.KnifeDrop = Value
+            restoreAllItemsChams()
+        end
+    })
+
+    VisualTab:CreateToggle({
+        Name = "Подсвечивать: Coin",
+        CurrentValue = false,
+        Flag = "ItemsChamsCoin",
+        Callback = function(Value)
+            ItemsChamsSettings.Targets.Coin = Value
+            restoreAllItemsChams()
+        end
+    })
+
+    VisualTab:CreateInput({
+        Name = "Добавить предмет по имени (напр. Handle)",
+        PlaceholderText = "Имя предмета",
+        RemoveTextAfterFocusLost = true,
+        Flag = "ItemsChamsCustomInput",
+        Callback = function(Text)
+            if Text and Text ~= "" then
+                table.insert(ItemsChamsSettings.CustomNames, Text)
+                restoreAllItemsChams()
+            end
+        end
+    })
+
+    VisualTab:CreateDropdown({
+        Name = "Стиль подсветки",
+        Options = {"Highlight", "Сплошной", "Outline", "Неон"},
+        CurrentOption = "Highlight",
+        Flag = "ItemsChamsStyle",
+        Callback = function(Value)
+            if type(Value) == "table" then Value = Value[1] end
+            if Value then
+                ItemsChamsSettings.Style = Value
+                restoreAllItemsChams()
+            end
+        end
+    })
+
+    VisualTab:CreateToggle({
+        Name = "Видно сквозь стены",
+        CurrentValue = true,
+        Flag = "ItemsChamsWalls",
+        Callback = function(Value)
+            ItemsChamsSettings.ThroughWalls = Value
+        end
+    })
+
+    VisualTab:CreateToggle({
+        Name = "Подсвечивать светом (PointLight)",
+        CurrentValue = true,
+        Flag = "ItemsChamsLight",
+        Callback = function(Value)
+            ItemsChamsSettings.LightEnabled = Value
+            restoreAllItemsChams()
+        end
+    })
+
+    VisualTab:CreateColorPicker({
+        Name = "Цвет подсветки предметов",
+        Color = Color3.fromRGB(255, 200, 0),
+        Flag = "ItemsChamsColor",
+        Callback = function(Value)
+            ItemsChamsSettings.Color = Value
+        end
+    })
+
+    VisualTab:CreateColorPicker({
+        Name = "Цвет контура (Outline)",
+        Color = Color3.fromRGB(255, 255, 255),
+        Flag = "ItemsChamsOutlineColor",
+        Callback = function(Value)
+            ItemsChamsSettings.OutlineColor = Value
+        end
+    })
+
+    VisualTab:CreateSlider({
+        Name = "Прозрачность предметов",
+        Range = {0, 100},
+        Increment = 5,
+        CurrentValue = 15,
+        Flag = "ItemsChamsTransparency",
+        Callback = function(Value)
+            ItemsChamsSettings.Transparency = Value / 100
         end
     })
 end
