@@ -62,7 +62,8 @@ return function(Window)
         ClockTime = 0,
         Brightness = 0.4,
         Exposure = -1.2,
-        LightInfluence = 100
+        LightInfluence = 100,
+        PassParticleLight = false
     }
 
     local PeakSettings = {
@@ -99,38 +100,6 @@ return function(Window)
         Duration = 2,
         Thickness = 0.15,
         OtherPlayers = true
-    }
-
-    -- ==========================================
-    -- ITEMS CHAMS НАСТРОЙКИ
-    -- ==========================================
-    local ItemsChamsSettings = {
-        Enabled      = false,
-        WholeTool    = true,
-        Targets      = {
-            Knife     = true,
-            Gun       = true,
-            Handle    = true,
-            GunDrop   = true,
-            KnifeDrop = true,
-            Coin      = false,
-        },
-        CustomNames  = {},
-        Color        = Color3.fromRGB(255, 200, 0),
-        OutlineColor = Color3.fromRGB(255, 255, 255),
-        ThroughWalls = true,
-        Style        = "Highlight",
-        Transparency = 0.15,
-        LightEnabled = true,
-    }
-
-    local ITEMS_PRESETS = {
-        Knife     = {"Knife", "Нож"},
-        Gun       = {"Gun", "Revolver", "Пистолет"},
-        Handle    = {"Handle"},
-        GunDrop   = {"GunDrop", "Gun Drop"},
-        KnifeDrop = {"KnifeDrop", "Knife Drop"},
-        Coin      = {"Coin", "Монета"},
     }
 
     -- ==========================================
@@ -993,6 +962,79 @@ return function(Window)
         EnvironmentSpecularScale = Lighting.EnvironmentSpecularScale
     }
     local OriginalMapLights = {}
+    local OriginalParticleEmitters = {}
+    local OriginalBeams = {}
+    local OriginalTrails = {}
+    local NeonLightSources = {}
+
+    local function restoreParticleAndBlockLight()
+        for emitter, origInfluence in pairs(OriginalParticleEmitters) do
+            if emitter and emitter.Parent then
+                pcall(function() emitter.LightInfluence = origInfluence end)
+            end
+        end
+        table.clear(OriginalParticleEmitters)
+
+        for beam, origInfluence in pairs(OriginalBeams) do
+            if beam and beam.Parent then
+                pcall(function() beam.LightInfluence = origInfluence end)
+            end
+        end
+        table.clear(OriginalBeams)
+
+        for trail, origInfluence in pairs(OriginalTrails) do
+            if trail and trail.Parent then
+                pcall(function() trail.LightInfluence = origInfluence end)
+            end
+        end
+        table.clear(OriginalTrails)
+
+        for part, light in pairs(NeonLightSources) do
+            if light and light.Parent then
+                pcall(function() light:Destroy() end)
+            end
+        end
+        table.clear(NeonLightSources)
+    end
+
+    local function applyParticleAndBlockLight()
+        if not AtmosphereSettings.Enabled or not AtmosphereSettings.PassParticleLight then
+            restoreParticleAndBlockLight()
+            return
+        end
+
+        for _, desc in ipairs(workspace:GetDescendants()) do
+            if not desc:IsDescendantOf(LocalPlayer.Character) and not desc.Name:match("XCLIENT") then
+                if desc:IsA("ParticleEmitter") then
+                    if OriginalParticleEmitters[desc] == nil then
+                        OriginalParticleEmitters[desc] = desc.LightInfluence
+                    end
+                    desc.LightInfluence = 0
+                elseif desc:IsA("Beam") then
+                    if OriginalBeams[desc] == nil then
+                        OriginalBeams[desc] = desc.LightInfluence
+                    end
+                    desc.LightInfluence = 0
+                elseif desc:IsA("Trail") then
+                    if OriginalTrails[desc] == nil then
+                        OriginalTrails[desc] = desc.LightInfluence
+                    end
+                    desc.LightInfluence = 0
+                elseif desc:IsA("BasePart") and desc.Material == Enum.Material.Neon then
+                    if not NeonLightSources[desc] and not desc:FindFirstChildOfClass("PointLight") then
+                        local pLight = Instance.new("PointLight")
+                        pLight.Name = "XCLIENT_NeonLight"
+                        pLight.Color = desc.Color
+                        pLight.Range = math.clamp(desc.Size.Magnitude * 2, 6, 25)
+                        pLight.Brightness = 2.5
+                        pLight.Shadows = false
+                        pLight.Parent = desc
+                        NeonLightSources[desc] = pLight
+                    end
+                end
+            end
+        end
+    end
 
     local function applyLightInfluence()
         local mult = AtmosphereSettings.LightInfluence / 100
@@ -1002,7 +1044,11 @@ return function(Window)
                 if OriginalMapLights[light] == nil then
                     OriginalMapLights[light] = light.Brightness
                 end
-                light.Brightness = OriginalMapLights[light] * mult
+                if AtmosphereSettings.PassParticleLight then
+                    light.Brightness = math.max(OriginalMapLights[light] * mult, OriginalMapLights[light])
+                else
+                    light.Brightness = OriginalMapLights[light] * mult
+                end
             end
         end
 
@@ -1029,12 +1075,49 @@ return function(Window)
     end
 
     workspace.DescendantAdded:Connect(function(descendant)
-        if AtmosphereSettings.Enabled and descendant:IsA("Light") and not descendant.Name:match("XCLIENT") and not descendant:IsDescendantOf(LocalPlayer.Character) then
+        if AtmosphereSettings.Enabled then
             task.wait(0.05)
-            if OriginalMapLights[descendant] == nil then
-                OriginalMapLights[descendant] = descendant.Brightness
+            if descendant:IsA("Light") and not descendant.Name:match("XCLIENT") and not descendant:IsDescendantOf(LocalPlayer.Character) then
+                if OriginalMapLights[descendant] == nil then
+                    OriginalMapLights[descendant] = descendant.Brightness
+                end
+                local mult = AtmosphereSettings.LightInfluence / 100
+                if AtmosphereSettings.PassParticleLight then
+                    descendant.Brightness = math.max(OriginalMapLights[descendant] * mult, OriginalMapLights[descendant])
+                else
+                    descendant.Brightness = OriginalMapLights[descendant] * mult
+                end
             end
-            descendant.Brightness = OriginalMapLights[descendant] * (AtmosphereSettings.LightInfluence / 100)
+
+            if AtmosphereSettings.PassParticleLight and not descendant:IsDescendantOf(LocalPlayer.Character) and not descendant.Name:match("XCLIENT") then
+                if descendant:IsA("ParticleEmitter") then
+                    if OriginalParticleEmitters[descendant] == nil then
+                        OriginalParticleEmitters[descendant] = descendant.LightInfluence
+                    end
+                    descendant.LightInfluence = 0
+                elseif descendant:IsA("Beam") then
+                    if OriginalBeams[descendant] == nil then
+                        OriginalBeams[descendant] = descendant.LightInfluence
+                    end
+                    descendant.LightInfluence = 0
+                elseif descendant:IsA("Trail") then
+                    if OriginalTrails[descendant] == nil then
+                        OriginalTrails[descendant] = descendant.LightInfluence
+                    end
+                    descendant.LightInfluence = 0
+                elseif descendant:IsA("BasePart") and descendant.Material == Enum.Material.Neon then
+                    if not NeonLightSources[descendant] and not descendant:FindFirstChildOfClass("PointLight") then
+                        local pLight = Instance.new("PointLight")
+                        pLight.Name = "XCLIENT_NeonLight"
+                        pLight.Color = descendant.Color
+                        pLight.Range = math.clamp(descendant.Size.Magnitude * 2, 6, 25)
+                        pLight.Brightness = 2.5
+                        pLight.Shadows = false
+                        pLight.Parent = descendant
+                        NeonLightSources[descendant] = pLight
+                    end
+                end
+            end
         end
     end)
 
@@ -1054,6 +1137,7 @@ return function(Window)
             Lighting.Brightness = OriginalLightingAtmosphereState.Brightness
             Lighting.ExposureCompensation = OriginalLightingAtmosphereState.ExposureCompensation
             restoreMapLights()
+            restoreParticleAndBlockLight()
             return
         end
 
@@ -1088,6 +1172,7 @@ return function(Window)
         end
 
         applyLightInfluence()
+        applyParticleAndBlockLight()
     end
 
     -- ==========================================
@@ -1425,207 +1510,6 @@ return function(Window)
             end
         end
     end
-
-    -- ==========================================
-    -- ITEMS CHAMS ЛОГИКА
-    -- ==========================================
-    local ItemsChamsData = {}
-
-    local function isMapPart(part)
-        local ancestor = part.Parent
-        while ancestor and ancestor ~= workspace do
-            local n = ancestor.Name
-            if n == "Map" or n == "Structure" or n == "Parts" or n == "Base" or n == "Hotel" then
-                return true
-            end
-            ancestor = ancestor.Parent
-        end
-        return false
-    end
-
-    local function isItemPart(part)
-        if not part:IsA("BasePart") then return false end
-        if part.Name:match("XCLIENT") then return false end
-
-        local tool  = part:FindFirstAncestorOfClass("Tool")
-        local model = part:FindFirstAncestorOfClass("Model")
-
-        -- Если это часть тела персонажа (есть Humanoid-модель),
-        -- пропускаем ТОЛЬКО когда часть не внутри Tool.
-        if model and model:FindFirstChildOfClass("Humanoid") and not tool then
-            return false
-        end
-
-        -- Исключаем структуры карты
-        if isMapPart(part) then return false end
-
-        local nameLower = string.lower(part.Name)
-
-        -- Пресеты (Knife / Gun / Handle / ...)
-        for key, enabled in pairs(ItemsChamsSettings.Targets) do
-            if enabled then
-                local names = ITEMS_PRESETS[key]
-                if names then
-                    for _, n in ipairs(names) do
-                        if nameLower == string.lower(n) then
-                            return true
-                        end
-                    end
-                end
-            end
-        end
-
-        -- Пользовательские имена
-        for _, n in ipairs(ItemsChamsSettings.CustomNames) do
-            if n ~= "" and nameLower == string.lower(n) then
-                return true
-            end
-        end
-
-        return false
-    end
-
-    local function clearItemChams(key)
-        local data = ItemsChamsData[key]
-        if not data then return end
-        if data.Highlight and data.Highlight.Parent then data.Highlight:Destroy() end
-        if data.Light and data.Light.Parent then data.Light:Destroy() end
-        if data.Original then
-            for part, orig in pairs(data.Original) do
-                if part and part.Parent then
-                    pcall(function()
-                        part.Material     = orig.Material
-                        part.Color        = orig.Color
-                        part.Transparency = orig.Transparency
-                    end)
-                end
-            end
-        end
-        ItemsChamsData[key] = nil
-    end
-
-    local function restoreAllItemsChams()
-        for key, _ in pairs(ItemsChamsData) do
-            clearItemChams(key)
-        end
-        table.clear(ItemsChamsData)
-    end
-
-    local function applyItemChams(part)
-        if not ItemsChamsSettings.Enabled then return end
-        if not part or not part.Parent then return end
-
-        -- Если часть внутри Tool и включена опция "подсвечивать всё оружие целиком",
-        -- то цепляем Highlight на Tool.
-        local tool = part:FindFirstAncestorOfClass("Tool")
-        local adornee = (tool and ItemsChamsSettings.WholeTool) and tool or part
-
-        local data = ItemsChamsData[adornee]
-        if not data then
-            data = { Original = {} }
-            data.Highlight = Instance.new("Highlight")
-            data.Highlight.Name = "XCLIENT_ItemHighlight"
-            data.Highlight.Adornee = adornee
-            data.Highlight.Parent = ScreenGui
-
-            ItemsChamsData[adornee] = data
-        end
-
-        local hl = data.Highlight
-        hl.FillColor    = ItemsChamsSettings.Color
-        hl.OutlineColor = ItemsChamsSettings.OutlineColor
-        hl.DepthMode = ItemsChamsSettings.ThroughWalls
-            and Enum.HighlightDepthMode.AlwaysOnTop
-            or  Enum.HighlightDepthMode.Occluded
-
-        local style = ItemsChamsSettings.Style
-        if style == "Сплошной" then
-            hl.FillTransparency = 0
-            hl.OutlineTransparency = 0
-        elseif style == "Outline" then
-            hl.FillTransparency = 1
-            hl.OutlineTransparency = 0
-        elseif style == "Неон" then
-            hl.FillTransparency = ItemsChamsSettings.Transparency
-            hl.OutlineTransparency = 0
-        else -- Highlight
-            hl.FillTransparency = ItemsChamsSettings.Transparency
-            hl.OutlineTransparency = 0
-        end
-        hl.Enabled = true
-
-        -- Свет / перекраска — только на сам part (внутри Tool тоже работает)
-        if ItemsChamsSettings.Style == "Сплошной" or ItemsChamsSettings.Style == "Неон" then
-            if data.Original[part] == nil then
-                data.Original[part] = {
-                    Material     = part.Material,
-                    Color        = part.Color,
-                    Transparency = part.Transparency,
-                }
-            end
-            pcall(function()
-                part.Material     = Enum.Material.Neon
-                part.Color        = ItemsChamsSettings.Color
-                part.Transparency = (ItemsChamsSettings.Style == "Сплошной")
-                                    and 0 or ItemsChamsSettings.Transparency
-            end)
-        end
-
-        if ItemsChamsSettings.LightEnabled then
-            data.Light = data.Light or Instance.new("PointLight")
-            data.Light.Name        = "XCLIENT_ItemLight"
-            data.Light.Range       = 10
-            data.Light.Shadows     = false
-            data.Light.Color       = ItemsChamsSettings.Color
-            data.Light.Brightness  = 2.5
-            if data.Light.Parent ~= part then
-                data.Light.Parent = part
-            end
-        end
-    end
-
-    local function updateItemsChams()
-        if not ItemsChamsSettings.Enabled then
-            if next(ItemsChamsData) ~= nil then restoreAllItemsChams() end
-            return
-        end
-
-        local found = {}
-        for _, obj in ipairs(workspace:GetDescendants()) do
-            if obj:IsA("BasePart") and isItemPart(obj) then
-                local tool = obj:FindFirstAncestorOfClass("Tool")
-                local key  = (tool and ItemsChamsSettings.WholeTool) and tool or obj
-                found[key] = true
-                applyItemChams(obj)
-            end
-        end
-
-        for key, _ in pairs(ItemsChamsData) do
-            if not found[key] or not key.Parent then
-                clearItemChams(key)
-            end
-        end
-    end
-
-    -- Периодическое обновление
-    task.spawn(function()
-        while task.wait(0.3) do
-            if ItemsChamsSettings.Enabled then
-                updateItemsChams()
-            end
-        end
-    end)
-
-    -- Мгновенная реакция на появление нового предмета
-    workspace.DescendantAdded:Connect(function(obj)
-        if not ItemsChamsSettings.Enabled then return end
-        if obj:IsA("BasePart") then
-            task.wait(0.05)
-            if isItemPart(obj) then
-                applyItemChams(obj)
-            end
-        end
-    end)
 
     -- ==========================================
     -- РЕНДЕР ЦИКЛ И ЛОГИКА
@@ -2006,6 +1890,21 @@ return function(Window)
         end
     })
 
+    VisualTab:CreateToggle({
+        Name = "Пропускать свет от всех партиклов",
+        CurrentValue = false,
+        Flag = "AtmospherePassParticlesToggle",
+        Callback = function(Value)
+            AtmosphereSettings.PassParticleLight = Value
+            if AtmosphereSettings.Enabled then
+                applyLightInfluence()
+                applyParticleAndBlockLight()
+            else
+                restoreParticleAndBlockLight()
+            end
+        end
+    })
+
     VisualTab:CreateSlider({
         Name = "Плотность тумана (Density)",
         Range = {0, 100},
@@ -2329,163 +2228,6 @@ return function(Window)
         Flag = "WeaponChamsTransparency",
         Callback = function(Value)
             WeaponChamsSettings.Transparency = Value / 100
-        end
-    })
-
-    VisualTab:CreateSection("Items Chams (Подсветка предметов)")
-
-    VisualTab:CreateToggle({
-        Name = "Включить Items Chams",
-        CurrentValue = false,
-        Flag = "ItemsChamsToggle",
-        Callback = function(Value)
-            ItemsChamsSettings.Enabled = Value
-            if not Value then restoreAllItemsChams() end
-        end
-    })
-
-    VisualTab:CreateToggle({
-        Name = "Подсвечивать инструмент целиком (а не только Handle)",
-        CurrentValue = true,
-        Flag = "ItemsChamsWholeTool",
-        Callback = function(Value)
-            ItemsChamsSettings.WholeTool = Value
-            restoreAllItemsChams()
-        end
-    })
-
-    VisualTab:CreateToggle({
-        Name = "Подсвечивать: Нож",
-        CurrentValue = true,
-        Flag = "ItemsChamsKnife",
-        Callback = function(Value)
-            ItemsChamsSettings.Targets.Knife = Value
-            restoreAllItemsChams()
-        end
-    })
-
-    VisualTab:CreateToggle({
-        Name = "Подсвечивать: Пистолет / Револьвер",
-        CurrentValue = true,
-        Flag = "ItemsChamsGun",
-        Callback = function(Value)
-            ItemsChamsSettings.Targets.Gun = Value
-            restoreAllItemsChams()
-        end
-    })
-
-    VisualTab:CreateToggle({
-        Name = "Подсвечивать: Handle (Выпавшее оружие)",
-        CurrentValue = true,
-        Flag = "ItemsChamsHandle",
-        Callback = function(Value)
-            ItemsChamsSettings.Targets.Handle = Value
-            restoreAllItemsChams()
-        end
-    })
-
-    VisualTab:CreateToggle({
-        Name = "Подсвечивать: GunDrop",
-        CurrentValue = true,
-        Flag = "ItemsChamsGunDrop",
-        Callback = function(Value)
-            ItemsChamsSettings.Targets.GunDrop = Value
-            restoreAllItemsChams()
-        end
-    })
-
-    VisualTab:CreateToggle({
-        Name = "Подсвечивать: KnifeDrop",
-        CurrentValue = true,
-        Flag = "ItemsChamsKnifeDrop",
-        Callback = function(Value)
-            ItemsChamsSettings.Targets.KnifeDrop = Value
-            restoreAllItemsChams()
-        end
-    })
-
-    VisualTab:CreateToggle({
-        Name = "Подсвечивать: Coin",
-        CurrentValue = false,
-        Flag = "ItemsChamsCoin",
-        Callback = function(Value)
-            ItemsChamsSettings.Targets.Coin = Value
-            restoreAllItemsChams()
-        end
-    })
-
-    VisualTab:CreateInput({
-        Name = "Добавить предмет по имени (напр. Handle)",
-        PlaceholderText = "Имя предмета",
-        RemoveTextAfterFocusLost = true,
-        Flag = "ItemsChamsCustomInput",
-        Callback = function(Text)
-            if Text and Text ~= "" then
-                table.insert(ItemsChamsSettings.CustomNames, Text)
-                restoreAllItemsChams()
-            end
-        end
-    })
-
-    VisualTab:CreateDropdown({
-        Name = "Стиль подсветки",
-        Options = {"Highlight", "Сплошной", "Outline", "Неон"},
-        CurrentOption = "Highlight",
-        Flag = "ItemsChamsStyle",
-        Callback = function(Value)
-            if type(Value) == "table" then Value = Value[1] end
-            if Value then
-                ItemsChamsSettings.Style = Value
-                restoreAllItemsChams()
-            end
-        end
-    })
-
-    VisualTab:CreateToggle({
-        Name = "Видно сквозь стены",
-        CurrentValue = true,
-        Flag = "ItemsChamsWalls",
-        Callback = function(Value)
-            ItemsChamsSettings.ThroughWalls = Value
-        end
-    })
-
-    VisualTab:CreateToggle({
-        Name = "Подсвечивать светом (PointLight)",
-        CurrentValue = true,
-        Flag = "ItemsChamsLight",
-        Callback = function(Value)
-            ItemsChamsSettings.LightEnabled = Value
-            restoreAllItemsChams()
-        end
-    })
-
-    VisualTab:CreateColorPicker({
-        Name = "Цвет подсветки предметов",
-        Color = Color3.fromRGB(255, 200, 0),
-        Flag = "ItemsChamsColor",
-        Callback = function(Value)
-            ItemsChamsSettings.Color = Value
-        end
-    })
-
-    VisualTab:CreateColorPicker({
-        Name = "Цвет контура (Outline)",
-        Color = Color3.fromRGB(255, 255, 255),
-        Flag = "ItemsChamsOutlineColor",
-        Callback = function(Value)
-            ItemsChamsSettings.OutlineColor = Value
-        end
-    })
-
-    VisualTab:CreateSlider({
-        Name = "Прозрачность предметов",
-        Range = {0, 100},
-        Increment = 5,
-        CurrentValue = 15,
-        Flag = "ItemsChamsTransparency",
-        Callback = function(Value)
-            ItemsChamsSettings.Transparency = Value / 100
         end
     })
 end
