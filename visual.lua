@@ -102,6 +102,22 @@ return function(Window)
         OtherPlayers = true
     }
 
+    local WorldParticlesSettings = {
+        Enabled = false,
+        Color = Color3.fromRGB(255, 255, 255),
+        Amount = 60,
+        Size = 0.4
+    }
+
+    local CustomDeathSettings = {
+        Enabled = false,
+        Mode = "Ghost (Призрак)",
+        Scope = "Только я",
+        Color = Color3.fromRGB(138, 43, 226),
+        Duration = 5,
+        PointSize = 0.18
+    }
+
     -- ==========================================
     -- HUD (XCLIENT)
     -- ==========================================
@@ -1512,6 +1528,173 @@ return function(Window)
     end
 
     -- ==========================================
+    -- WORLD PARTICLES (ПАДАЮЩИЕ ЧАСТИЦЫ / СНЕГ)
+    -- ==========================================
+    local WorldParticlesPart = Instance.new("Part")
+    WorldParticlesPart.Name = "XCLIENT_WorldParticlesPart"
+    WorldParticlesPart.Size = Vector3.new(140, 1, 140)
+    WorldParticlesPart.Transparency = 1
+    WorldParticlesPart.Anchored = true
+    WorldParticlesPart.CanCollide = false
+    WorldParticlesPart.CanTouch = false
+    WorldParticlesPart.CanQuery = false
+    WorldParticlesPart.CastShadow = false
+
+    local WorldParticleEmitter = Instance.new("ParticleEmitter")
+    WorldParticleEmitter.Name = "XCLIENT_WorldEmitter"
+    WorldParticleEmitter.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+    WorldParticleEmitter.Color = ColorSequence.new(WorldParticlesSettings.Color)
+    WorldParticleEmitter.Size = NumberSequence.new(WorldParticlesSettings.Size)
+    WorldParticleEmitter.Rate = WorldParticlesSettings.Amount
+    WorldParticleEmitter.Lifetime = NumberRange.new(5, 8)
+    WorldParticleEmitter.Speed = NumberRange.new(8, 18)
+    WorldParticleEmitter.EmissionDirection = Enum.NormalId.Bottom
+    WorldParticleEmitter.SpreadAngle = Vector2.new(12, 12)
+    WorldParticleEmitter.LightEmission = 0.8
+    WorldParticleEmitter.LightInfluence = 0
+    WorldParticleEmitter.Enabled = false
+    WorldParticleEmitter.Parent = WorldParticlesPart
+
+    local function updateWorldParticles()
+        if WorldParticlesSettings.Enabled then
+            if WorldParticlesPart.Parent ~= workspace then
+                WorldParticlesPart.Parent = workspace
+            end
+            WorldParticleEmitter.Enabled = true
+            WorldParticleEmitter.Rate = WorldParticlesSettings.Amount
+            WorldParticleEmitter.Size = NumberSequence.new(WorldParticlesSettings.Size)
+            WorldParticleEmitter.Color = ColorSequence.new(WorldParticlesSettings.Color)
+        else
+            WorldParticleEmitter.Enabled = false
+            if WorldParticlesPart.Parent then
+                WorldParticlesPart.Parent = nil
+            end
+        end
+    end
+
+    -- ==========================================
+    -- CUSTOM DEATH СИСТЕМА (GHOST & ТОЧКИ)
+    -- ==========================================
+    local DeathEffectsFolder = workspace:FindFirstChild("XCLIENT_DeathEffects")
+    if not DeathEffectsFolder then
+        DeathEffectsFolder = Instance.new("Folder")
+        DeathEffectsFolder.Name = "XCLIENT_DeathEffects"
+        DeathEffectsFolder.Parent = workspace
+    end
+
+    local function handleCharacterDeath(char)
+        if not CustomDeathSettings.Enabled or not char then return end
+        local hrp = char:FindFirstChild("HumanoidRootPart")
+        if not hrp then return end
+
+        local mode = CustomDeathSettings.Mode
+
+        if mode == "Ghost (Призрак)" then
+            char.Archivable = true
+            local ghost = char:Clone()
+            char.Archivable = false
+
+            if ghost then
+                ghost.Name = "XCLIENT_GhostCorpse"
+                for _, item in ipairs(ghost:GetDescendants()) do
+                    if item:IsA("Script") or item:IsA("LocalScript") or item:IsA("Sound") or item:IsA("BillboardGui") then
+                        item:Destroy()
+                    elseif item:IsA("BasePart") then
+                        item.Anchored = true
+                        item.CanCollide = false
+                        item.CanTouch = false
+                        item.CanQuery = false
+                        item.CastShadow = false
+                        item.Material = Enum.Material.ForceField
+                        item.Color = CustomDeathSettings.Color
+                        item.Transparency = 0.65
+                    elseif item:IsA("Decal") or item:IsA("Texture") then
+                        item.Transparency = 1
+                    end
+                end
+
+                local hl = Instance.new("Highlight")
+                hl.Name = "GhostHighlight"
+                hl.Adornee = ghost
+                hl.FillColor = CustomDeathSettings.Color
+                hl.OutlineColor = CustomDeathSettings.Color
+                hl.FillTransparency = 0.75
+                hl.OutlineTransparency = 0
+                hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+                hl.Parent = ghost
+
+                ghost.Parent = DeathEffectsFolder
+                Debris:AddItem(ghost, CustomDeathSettings.Duration)
+            end
+        elseif mode == "Силуэт из точек" then
+            local pointModel = Instance.new("Model")
+            pointModel.Name = "XCLIENT_PointSilhouette"
+
+            for _, part in ipairs(char:GetChildren()) do
+                if part:IsA("BasePart") and part.Transparency < 0.9 and not part.Name:match("XCLIENT") then
+                    local size = part.Size
+                    local cf = part.CFrame
+                    local stepX = math.clamp(size.X / 3, 0.35, 1)
+                    local stepY = math.clamp(size.Y / 3, 0.35, 1)
+                    local stepZ = math.clamp(size.Z / 3, 0.35, 1)
+
+                    local halfX = size.X / 2
+                    local halfY = size.Y / 2
+                    local halfZ = size.Z / 2
+
+                    for x = -halfX + (stepX / 2), halfX, stepX do
+                        for y = -halfY + (stepY / 2), halfY, stepY do
+                            for z = -halfZ + (stepZ / 2), halfZ, stepZ do
+                                local dot = Instance.new("Part")
+                                dot.Name = "Point"
+                                dot.Shape = Enum.PartType.Ball
+                                dot.Size = Vector3.new(CustomDeathSettings.PointSize, CustomDeathSettings.PointSize, CustomDeathSettings.PointSize)
+                                dot.Color = CustomDeathSettings.Color
+                                dot.Material = Enum.Material.Neon
+                                dot.Anchored = true
+                                dot.CanCollide = false
+                                dot.CanTouch = false
+                                dot.CanQuery = false
+                                dot.CastShadow = false
+                                dot.CFrame = cf * CFrame.new(x, y, z)
+                                dot.Parent = pointModel
+                            end
+                        end
+                    end
+                end
+            end
+
+            pointModel.Parent = DeathEffectsFolder
+            Debris:AddItem(pointModel, CustomDeathSettings.Duration)
+        end
+    end
+
+    local function hookPlayerDeath(p)
+        local function onCharacterAdded(char)
+            local humanoid = char:WaitForChild("Humanoid", 6)
+            if humanoid then
+                humanoid.Died:Connect(function()
+                    if not CustomDeathSettings.Enabled then return end
+                    if CustomDeathSettings.Scope == "Только я" and p ~= LocalPlayer then return end
+                    handleCharacterDeath(char)
+                end)
+            end
+        end
+
+        if p.Character then
+            task.spawn(function()
+                onCharacterAdded(p.Character)
+            end)
+        end
+        p.CharacterAdded:Connect(onCharacterAdded)
+    end
+
+    for _, p in ipairs(Players:GetPlayers()) do
+        hookPlayerDeath(p)
+    end
+    Players.PlayerAdded:Connect(hookPlayerDeath)
+
+    -- ==========================================
     -- РЕНДЕР ЦИКЛ И ЛОГИКА
     -- ==========================================
     local hue = 0
@@ -1532,6 +1715,11 @@ return function(Window)
             Camera.FieldOfView = FOVSettings.Value
         end
 
+        if WorldParticlesSettings.Enabled and WorldParticlesPart.Parent then
+            local camPos = Camera.CFrame.Position
+            WorldParticlesPart.CFrame = CFrame.new(camPos.X, camPos.Y + 28, camPos.Z)
+        end
+
         if PeakSettings.Enabled then
             local murderer = getMurderer()
             local myChar = LocalPlayer.Character
@@ -1543,7 +1731,7 @@ return function(Window)
                     
                     local floorParams = RaycastParams.new()
                     floorParams.FilterType = Enum.RaycastFilterType.Exclude
-                    floorParams.FilterDescendantsInstances = {myChar, murderer.Character, ChinaHat, PeakMarker, TracersFolder}
+                    floorParams.FilterDescendantsInstances = {myChar, murderer.Character, ChinaHat, PeakMarker, TracersFolder, WorldParticlesPart, DeathEffectsFolder}
                     
                     local floorRay = workspace:Raycast(myChar.HumanoidRootPart.Position, Vector3.new(0, -15, 0), floorParams)
                     if floorRay then
@@ -1962,6 +2150,116 @@ return function(Window)
         Callback = function(Value)
             AtmosphereSettings.Exposure = Value / 10
             if AtmosphereSettings.Enabled and AtmosphereSettings.DarkLighting then applyCustomAtmosphere() end
+        end
+    })
+
+    VisualTab:CreateSection("World Particles (Снегопад / Частицы)")
+
+    VisualTab:CreateToggle({
+        Name = "Включить падающие частицы",
+        CurrentValue = false,
+        Flag = "WorldParticlesToggle",
+        Callback = function(Value)
+            WorldParticlesSettings.Enabled = Value
+            updateWorldParticles()
+        end
+    })
+
+    VisualTab:CreateColorPicker({
+        Name = "Цвет падающих частиц",
+        Color = Color3.fromRGB(255, 255, 255),
+        Flag = "WorldParticlesColor",
+        Callback = function(Value)
+            WorldParticlesSettings.Color = Value
+            updateWorldParticles()
+        end
+    })
+
+    VisualTab:CreateSlider({
+        Name = "Количество частиц (Rate)",
+        Range = {10, 300},
+        Increment = 5,
+        CurrentValue = 60,
+        Flag = "WorldParticlesAmount",
+        Callback = function(Value)
+            WorldParticlesSettings.Amount = Value
+            updateWorldParticles()
+        end
+    })
+
+    VisualTab:CreateSlider({
+        Name = "Размер частиц",
+        Range = {0.1, 2.5},
+        Increment = 0.05,
+        CurrentValue = 0.4,
+        Flag = "WorldParticlesSize",
+        Callback = function(Value)
+            WorldParticlesSettings.Size = Value
+            updateWorldParticles()
+        end
+    })
+
+    VisualTab:CreateSection("Custom Death Effects (Эффекты смерти)")
+
+    VisualTab:CreateToggle({
+        Name = "Включить Custom Death",
+        CurrentValue = false,
+        Flag = "CustomDeathToggle",
+        Callback = function(Value)
+            CustomDeathSettings.Enabled = Value
+        end
+    })
+
+    VisualTab:CreateDropdown({
+        Name = "Режим смерти",
+        Options = {"Ghost (Призрак)", "Силуэт из точек"},
+        CurrentOption = "Ghost (Призрак)",
+        Flag = "CustomDeathMode",
+        Callback = function(Value)
+            if type(Value) == "table" then Value = Value[1] end
+            if Value then CustomDeathSettings.Mode = Value end
+        end
+    })
+
+    VisualTab:CreateDropdown({
+        Name = "Применять к игрокам",
+        Options = {"Только я", "Все игроки"},
+        CurrentOption = "Только я",
+        Flag = "CustomDeathScope",
+        Callback = function(Value)
+            if type(Value) == "table" then Value = Value[1] end
+            if Value then CustomDeathSettings.Scope = Value end
+        end
+    })
+
+    VisualTab:CreateColorPicker({
+        Name = "Цвет эффекта смерти",
+        Color = Color3.fromRGB(138, 43, 226),
+        Flag = "CustomDeathColor",
+        Callback = function(Value)
+            CustomDeathSettings.Color = Value
+        end
+    })
+
+    VisualTab:CreateSlider({
+        Name = "Время исчезновения (сек)",
+        Range = {1, 25},
+        Increment = 1,
+        CurrentValue = 5,
+        Flag = "CustomDeathDuration",
+        Callback = function(Value)
+            CustomDeathSettings.Duration = Value
+        end
+    })
+
+    VisualTab:CreateSlider({
+        Name = "Размер точек силуэта",
+        Range = {0.05, 0.6},
+        Increment = 0.01,
+        CurrentValue = 0.18,
+        Flag = "CustomDeathPointSize",
+        Callback = function(Value)
+            CustomDeathSettings.PointSize = Value
         end
     })
 
